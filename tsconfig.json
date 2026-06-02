@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    /* Output modern ES modules that run natively in the browser (no bundler). */
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+
+    /* Project layout. */
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    /* Strictness / quality. */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "sourceMap": true
+  },
+  "include": ["src"]
+}

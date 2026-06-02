@@ -1,0 +1,16 @@
+{
+  "name": "elder-story-rpg",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A 2D side-scrolling RPG: MapleStory-style platforming physics with Skyrim-style progression. Phase 1 = core engine foundation.",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "serve": "python3 -m http.server 8080",
+    "dev": "echo \"Run 'npm run watch' in one terminal and 'npm run serve' in another, then open http://localhost:8080\""
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
