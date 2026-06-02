@@ -701,14 +701,7 @@ export class Game {
       if (npc && !this.dialogue.open) {
         r.text("Press E to talk", npc.centerX - cam.x, npc.y - cam.y - 38, "#ffffff", "bold 11px monospace", "center");
       }
-      r.text(
-        "J atk · K cast · Q spell · Z shout · V cycle · L block · F potion · E talk · I menu",
-        r.width / 2,
-        r.height - 14,
-        "#7e879a",
-        "11px monospace",
-        "center",
-      );
+      // (Keyboard controls are shown below the canvas, in index.html.)
 
       if (this.mainQuest.stage === "complete") {
         r.text("✦ ALDUIN IS SLAIN — you are the Dragonborn of legend ✦", r.width / 2, 52, "#ffd45e", "bold 15px monospace", "center");

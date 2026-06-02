@@ -8,14 +8,19 @@
       html,
       body {
         margin: 0;
-        height: 100%;
+        min-height: 100vh;
         background: #0b0d12;
+        font-family: monospace;
+        color: #ffffff;
+      }
+      body {
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        overflow: hidden;
-        font-family: monospace;
-        color: #9aa4b2;
+        gap: 14px;
+        padding: 14px 8px;
+        box-sizing: border-box;
       }
       #game {
         background: #6ec6f5;
@@ -23,13 +28,58 @@
         image-rendering: auto;
         box-shadow: 0 0 0 2px #1c2230, 0 14px 48px rgba(0, 0, 0, 0.6);
         max-width: 100vw;
-        max-height: 100vh;
+        max-height: 80vh;
+      }
+      /* Keyboard controls legend, shown below the game screen. */
+      #controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px 14px;
+        max-width: 960px;
+        color: #ffffff;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      #controls span {
+        white-space: nowrap;
+      }
+      #controls kbd {
+        display: inline-block;
+        min-width: 12px;
+        padding: 1px 6px;
+        background: #1c2230;
+        border: 1px solid #3a4660;
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        color: #ffffff;
+        font-size: 12px;
       }
     </style>
   </head>
   <body>
     <!-- Internal resolution is fixed; CSS only scales the element to fit the window. -->
     <canvas id="game" width="960" height="540"></canvas>
+
+    <!-- Keyboard controls (white text, below the game screen). -->
+    <div id="controls">
+      <span><kbd>←</kbd><kbd>→</kbd> / <kbd>A</kbd><kbd>D</kbd> Move</span>
+      <span><kbd>Space</kbd> Jump</span>
+      <span><kbd>↓</kbd>+<kbd>Jump</kbd> Drop through</span>
+      <span><kbd>J</kbd> Attack</span>
+      <span><kbd>K</kbd> Cast</span>
+      <span><kbd>Q</kbd> Cycle spell</span>
+      <span><kbd>Z</kbd> Shout</span>
+      <span><kbd>V</kbd> Cycle shout</span>
+      <span><kbd>L</kbd> Block</span>
+      <span><kbd>Shift</kbd> Sneak</span>
+      <span><kbd>F</kbd> Potion</span>
+      <span><kbd>R</kbd> Beast Form</span>
+      <span><kbd>E</kbd> Talk</span>
+      <span><kbd>I</kbd> Menu</span>
+      <span><kbd>`</kbd> Debug</span>
+    </div>
+
     <!-- Compiled by `tsc` from src/ into dist/. Loaded as a native ES module. -->
     <script type="module" src="./dist/main.js"></script>
   </body>
