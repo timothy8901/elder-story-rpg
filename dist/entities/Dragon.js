@@ -28,7 +28,7 @@ export class Dragon extends Enemy {
     attackZone() {
         return this.breathActive > 0 ? this.breathZone : null;
     }
-    takeHit(damage, _knockDir) {
+    takeHit(damage, _knockDir, _knockback) {
         if (this.isImmune())
             return;
         this.health -= damage;

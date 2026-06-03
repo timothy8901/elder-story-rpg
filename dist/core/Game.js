@@ -23,7 +23,7 @@ import { MainQuest } from "../story/MainQuest.js";
 import { createMap, FIRST_MAP_ID } from "../world/maps/index.js";
 import { drawBackground } from "../rendering/Background.js";
 import { drawTilemap } from "../rendering/Tiles.js";
-import { drawEdgeGate, drawNpc, drawPortal } from "../rendering/sprites.js";
+import { drawNpc, drawPortal } from "../rendering/sprites.js";
 import { Camera } from "./Camera.js";
 import { Input } from "./Input.js";
 import { Renderer } from "./Renderer.js";
@@ -59,8 +59,6 @@ export class Game {
         // Beast Form (Companions unlock).
         this.beastTimer = 0;
         this.beastCooldown = 0;
-        /** Brief lock after a map change so the arrival point can't instantly re-trigger an exit. */
-        this.exitCooldown = 0;
         this.input = new Input();
         this.renderer = new Renderer(canvas);
         this.player = new Player(0, 0);
@@ -171,10 +169,17 @@ export class Game {
                 return; // dialogue takes over next frame
             }
         }
+        // Enter a ground portal with ↑ / W (portals never trigger automatically).
+        if (this.input.anyPressed(["ArrowUp", "KeyW"])) {
+            const exit = this.currentExit();
+            if (exit) {
+                this.transitionTo(exit.toMapId, exit.toSpawn);
+                this.input.clearTransients();
+                return;
+            }
+        }
         this.player.update(dt, { input: this.input, map: this.map.tilemap });
         this.updateBeastForm(dt);
-        if (this.exitCooldown > 0)
-            this.exitCooldown = Math.max(0, this.exitCooldown - dt);
         // Combat actions.
         if (this.player.consumeAttack()) {
             this.combat.meleeAttack(this.player, this.character, this.equipment, this.player.sneaking);
@@ -208,7 +213,6 @@ export class Game {
             }
         }
         this.combat.update(dt, ctx);
-        this.checkExits();
         this.camera.follow(this.player.body.centerX, this.player.body.centerY);
     }
     // --- Spells -------------------------------------------------------------
@@ -562,15 +566,13 @@ export class Game {
             return null;
         return piece.armorType === "heavy" ? "heavyArmor" : "lightArmor";
     }
-    checkExits() {
-        if (this.exitCooldown > 0)
-            return;
+    /** The ground portal the player is currently standing in, if any. */
+    currentExit() {
         for (const exit of this.map.exits) {
-            if (intersects(this.player.body.rect, exit.rect)) {
-                this.transitionTo(exit.toMapId, exit.toSpawn);
-                return;
-            }
+            if (intersects(this.player.body.rect, exit.rect))
+                return exit;
         }
+        return null;
     }
     transitionTo(mapId, spawnName) {
         this.map = createMap(mapId);
@@ -582,7 +584,6 @@ export class Game {
         this.player.body.vel.y = 0;
         this.camera.setBounds(this.map.tilemap.pixelWidth, this.map.tilemap.pixelHeight);
         this.camera.snapTo(this.player.body.centerX, this.player.body.centerY);
-        this.exitCooldown = 0.35; // don't re-trigger an exit on arrival
         this.populateEnemies();
         this.populateNpcs();
         this.quests.setFlag(`visited_${mapId}`);
@@ -627,14 +628,9 @@ export class Game {
         const time = this.animTime;
         drawBackground(r, cam, this.map, time);
         drawTilemap(r, cam, this.map.tilemap, this.map.theme);
-        const mapW = this.map.tilemap.pixelWidth;
         r.withWorld(cam, (ctx) => {
-            for (const exit of this.map.exits) {
-                if (exit.kind === "edge")
-                    drawEdgeGate(ctx, exit, mapW, time);
-                else
-                    drawPortal(ctx, exit, time);
-            }
+            for (const exit of this.map.exits)
+                drawPortal(ctx, exit, time);
             for (const npc of this.npcs)
                 drawNpc(ctx, npc, this.npcMarker(npc), time);
         });
@@ -657,6 +653,12 @@ export class Game {
             const npc = this.nearbyNpc();
             if (npc && !this.dialogue.open) {
                 r.text("Press E to talk", npc.centerX - cam.x, npc.y - cam.y - 38, "#ffffff", "bold 11px monospace", "center");
+            }
+            // "Press ↑" prompt when standing in a ground portal.
+            const exit = this.currentExit();
+            if (exit && !this.dialogue.open) {
+                const b = this.player.body;
+                r.text(`Press ↑ to enter ${exit.label}`, b.centerX - cam.x, b.pos.y - cam.y - 16, "#ffffff", "bold 12px monospace", "center");
             }
             // (Keyboard controls are shown below the canvas, in index.html.)
             if (this.mainQuest.stage === "complete") {

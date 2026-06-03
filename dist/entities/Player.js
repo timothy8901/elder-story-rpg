@@ -1,4 +1,4 @@
-import { AIR_ACCEL, COYOTE_TIME, DROP_THROUGH_TIME, FRICTION, JUMP_BUFFER, JUMP_CUT, JUMP_VELOCITY, MAX_RUN_SPEED, MOVE_ACCEL, PLAYER_H, PLAYER_W, TILE_SIZE, } from "../config.js";
+import { AIR_ACCEL, COYOTE_TIME, DROP_THROUGH_TIME, FRICTION, HURT_STUN, JUMP_BUFFER, JUMP_CUT, JUMP_VELOCITY, KNOCKBACK, MAX_RUN_SPEED, MOVE_ACCEL, PLAYER_H, PLAYER_W, TILE_SIZE, } from "../config.js";
 import { Body } from "../physics/Body.js";
 import * as Physics from "../physics/Physics.js";
 import { drawPlayer } from "../rendering/sprites.js";
@@ -62,6 +62,15 @@ export class Player extends Entity {
         this.attackCooldown = Math.max(0, this.attackCooldown - dt);
         this.hurtTimer = Math.max(0, this.hurtTimer - dt);
         this.invuln = Math.max(0, this.invuln - dt);
+        // Stagger: while hurt the player can't act and carries the knockback.
+        if (this.hurtTimer > 0) {
+            this.sneaking = false;
+            this.blocking = false;
+            this.coyote = Math.max(0, this.coyote - dt);
+            this.buffer = Math.max(0, this.buffer - dt);
+            Physics.step(b, map, dt);
+            return;
+        }
         if (!this.blocking && this.attackCooldown <= 0 && input.anyPressed(KEYS.attack)) {
             this.pendingAttack = true;
             this.attackTimer = 0.18;
@@ -122,10 +131,10 @@ export class Player extends Entity {
     }
     /** Apply a hit: knockback + brief invulnerability. */
     applyHurt(knockDir) {
-        this.body.vel.x = knockDir * 200;
-        this.body.vel.y = -150;
+        this.body.vel.x = knockDir * KNOCKBACK.player;
+        this.body.vel.y = -160;
         this.body.onGround = false;
-        this.hurtTimer = 0.25;
+        this.hurtTimer = HURT_STUN;
         this.invuln = HURT_INVULN;
     }
     get isInvulnerable() {

@@ -1,3 +1,4 @@
+import { KNOCKBACK, KNOCK_STUN } from "../config.js";
 import { Body } from "../physics/Body.js";
 import * as Physics from "../physics/Physics.js";
 import { drawEnemy } from "../rendering/sprites.js";
@@ -27,6 +28,8 @@ export class Enemy {
         this.hurtTimer = 0;
         this.attackCooldown = 0;
         this.fleeTimer = 0;
+        /** While > 0, the enemy is staggered and carries its knockback (no steering). */
+        this.knockTimer = 0;
         /** Whether the most recent hit came from a spell (for faction kill objectives). */
         this.lastHitBySpell = false;
         /** True for flying dragon-type enemies (subclass {@link Dragon}). */
@@ -41,12 +44,15 @@ export class Enemy {
         this.kind = opts?.kind ?? "Draugr";
         this.lootLevel = opts?.lootLevel ?? 1;
     }
-    /** Apply a hit: damage, brief flash, and knockback. */
-    takeHit(damage, knockDir) {
+    /** Apply a hit: damage, brief flash, and knockback (with hitstun so it carries). */
+    takeHit(damage, knockDir, knockback = KNOCKBACK.hit) {
         this.health -= damage;
         this.hurtTimer = 0.18;
-        this.body.vel.x += knockDir * 150;
-        this.body.vel.y = -130;
+        if (knockback > 0) {
+            this.body.vel.x += knockDir * knockback;
+            this.body.vel.y = -Math.min(260, 80 + knockback * 0.3);
+            this.knockTimer = KNOCK_STUN;
+        }
         if (this.health <= 0)
             this.dead = true;
     }
@@ -58,6 +64,12 @@ export class Enemy {
         this.hurtTimer = Math.max(0, this.hurtTimer - dt);
         this.attackCooldown = Math.max(0, this.attackCooldown - dt);
         this.fleeTimer = Math.max(0, this.fleeTimer - dt);
+        // Hitstun: while knocked back, carry the launch velocity without steering.
+        if (this.knockTimer > 0) {
+            this.knockTimer -= dt;
+            Physics.step(b, map, dt);
+            return;
+        }
         const dx = playerCenterX - b.centerX;
         const dist = Math.abs(dx);
         const toPlayer = dx >= 0 ? 1 : -1;

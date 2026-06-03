@@ -1,5 +1,6 @@
 import type { Camera } from "../core/Camera.js";
 import type { Renderer } from "../core/Renderer.js";
+import { KNOCKBACK, KNOCK_STUN } from "../config.js";
 import { Body } from "../physics/Body.js";
 import * as Physics from "../physics/Physics.js";
 import type { Tilemap } from "../physics/Tilemap.js";
@@ -29,6 +30,8 @@ export class Enemy {
   hurtTimer = 0;
   attackCooldown = 0;
   fleeTimer = 0;
+  /** While > 0, the enemy is staggered and carries its knockback (no steering). */
+  knockTimer = 0;
   /** Whether the most recent hit came from a spell (for faction kill objectives). */
   lastHitBySpell = false;
   /** True for flying dragon-type enemies (subclass {@link Dragon}). */
@@ -57,12 +60,15 @@ export class Enemy {
     this.lootLevel = opts?.lootLevel ?? 1;
   }
 
-  /** Apply a hit: damage, brief flash, and knockback. */
-  takeHit(damage: number, knockDir: number): void {
+  /** Apply a hit: damage, brief flash, and knockback (with hitstun so it carries). */
+  takeHit(damage: number, knockDir: number, knockback: number = KNOCKBACK.hit): void {
     this.health -= damage;
     this.hurtTimer = 0.18;
-    this.body.vel.x += knockDir * 150;
-    this.body.vel.y = -130;
+    if (knockback > 0) {
+      this.body.vel.x += knockDir * knockback;
+      this.body.vel.y = -Math.min(260, 80 + knockback * 0.3);
+      this.knockTimer = KNOCK_STUN;
+    }
     if (this.health <= 0) this.dead = true;
   }
 
@@ -75,6 +81,13 @@ export class Enemy {
     this.hurtTimer = Math.max(0, this.hurtTimer - dt);
     this.attackCooldown = Math.max(0, this.attackCooldown - dt);
     this.fleeTimer = Math.max(0, this.fleeTimer - dt);
+
+    // Hitstun: while knocked back, carry the launch velocity without steering.
+    if (this.knockTimer > 0) {
+      this.knockTimer -= dt;
+      Physics.step(b, map, dt);
+      return;
+    }
 
     const dx = playerCenterX - b.centerX;
     const dist = Math.abs(dx);

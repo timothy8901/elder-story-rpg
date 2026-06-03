@@ -53,12 +53,18 @@ export class MapBuilder {
 export function standOn(col, rowTop) {
     return { x: col * TILE_SIZE, y: rowTop * TILE_SIZE - PLAYER_H - 1 };
 }
-/** A walk-off gate on the left screen edge. */
-export function leftExit(rows, toMapId, toSpawn, label) {
-    return { rect: { x: 0, y: 0, w: TILE_SIZE, h: rows * TILE_SIZE }, toMapId, toSpawn, label, kind: "edge" };
-}
-/** A walk-off gate on the right screen edge. */
-export function rightExit(cols, rows, toMapId, toSpawn, label) {
-    return { rect: { x: (cols - 1) * TILE_SIZE, y: 0, w: TILE_SIZE, h: rows * TILE_SIZE }, toMapId, toSpawn, label, kind: "edge" };
+/**
+ * A ground portal: a 2×2-tile entry pad resting on top of `groundRow`. The
+ * player steps onto it and presses ↑/W to travel. These are the *only* scene
+ * transitions — areas are otherwise sealed by walls at their edges.
+ */
+export function groundPortal(col, groundRow, toMapId, toSpawn, label) {
+    return {
+        rect: { x: col * TILE_SIZE, y: (groundRow - 2) * TILE_SIZE, w: 2 * TILE_SIZE, h: 2 * TILE_SIZE },
+        toMapId,
+        toSpawn,
+        label,
+        kind: "portal",
+    };
 }
 //# sourceMappingURL=builder.js.map

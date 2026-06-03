@@ -36,6 +36,21 @@ export const COYOTE_TIME = 0.08; // grace window to still jump just after leavin
 export const JUMP_BUFFER = 0.1; // remember a jump press this long before landing (s)
 export const DROP_THROUGH_TIME = 0.18; // ignore one-way platforms this long after a drop (s)
 // ---------------------------------------------------------------------------
+// Combat knockback (horizontal launch speed, px/s) + hitstun
+// ---------------------------------------------------------------------------
+export const KNOCKBACK = {
+    hit: 170, // a normal melee hit / enemy contact
+    spell: 140, // a spell projectile
+    power: 380, // a sneak / power attack — extra launch
+    shoutForce: 540, // Unrelenting Force — big launch
+    shoutFire: 280, // Fire Breath
+    player: 230, // the player when hurt
+};
+/** Enemy can't steer for this long after being knocked back (carries the launch). */
+export const KNOCK_STUN = 0.18;
+/** Player loses control this long after being hit (stagger). */
+export const HURT_STUN = 0.2;
+// ---------------------------------------------------------------------------
 // Camera
 // ---------------------------------------------------------------------------
 /** Lerp factor toward the follow target each physics step (0 = frozen, 1 = instant). */

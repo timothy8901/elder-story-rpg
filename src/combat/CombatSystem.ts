@@ -5,6 +5,7 @@ import type { Player } from "../entities/Player.js";
 import type { Equipment } from "../items/Equipment.js";
 import type { Character, ProgressEvent } from "../progression/Character.js";
 import type { SkillId } from "../progression/skills.js";
+import { KNOCKBACK } from "../config.js";
 import { intersects } from "../physics/AABB.js";
 import type { Tilemap } from "../physics/Tilemap.js";
 import { TileType, type Rect } from "../types.js";
@@ -25,6 +26,7 @@ interface MeleeHit {
   fire: number;
   skill: SkillId;
   knockDir: number;
+  knockback: number;
   alreadyHit: Set<Enemy>;
 }
 
@@ -87,6 +89,8 @@ export class CombatSystem {
       fire: equipment.weaponFireDamage(),
       skill,
       knockDir: b.facing,
+      // A sneak/power attack launches the target much further than a normal swing.
+      knockback: sneaking ? KNOCKBACK.power : KNOCKBACK.hit,
       alreadyHit: new Set(),
     });
   }
@@ -175,6 +179,7 @@ export class CombatSystem {
       w: shout.range,
       h: b.h + 40,
     };
+    const kb = shout.kind === "force" ? KNOCKBACK.shoutForce : KNOCKBACK.shoutFire; // Fus Ro Dah!
     for (const e of this.enemies) {
       if (!intersects(rect, e.body.rect)) continue;
       if (e.isImmune()) {
@@ -182,12 +187,8 @@ export class CombatSystem {
         continue;
       }
       e.lastHitBySpell = false;
-      e.takeHit(shout.power, b.facing);
+      e.takeHit(shout.power, b.facing, kb);
       this.damageNumbers.spawn(e.body.centerX, e.body.pos.y, shout.power, shout.color);
-      if (shout.kind === "force") {
-        e.body.vel.x += b.facing * 420; // Fus Ro Dah!
-        e.body.vel.y = -160;
-      }
     }
     this.damageNumbers.spawnText(b.centerX, b.pos.y - 14, shout.words, shout.color);
   }
@@ -238,10 +239,10 @@ export class CombatSystem {
           continue;
         }
         e.lastHitBySpell = false;
-        e.takeHit(hit.damage, hit.knockDir);
+        e.takeHit(hit.damage, hit.knockDir, hit.knockback);
         this.damageNumbers.spawn(e.body.centerX, e.body.pos.y, hit.damage);
         if (hit.fire > 0) {
-          e.takeHit(hit.fire, hit.knockDir);
+          e.takeHit(hit.fire, hit.knockDir, 0); // no extra knockback for the fire tick
           this.damageNumbers.spawn(e.body.centerX, e.body.pos.y - 14, hit.fire, "#ff8a3d");
         }
         ctx.onProgress(ctx.character.gainSkillXp(hit.skill, XP_MELEE_HIT));
@@ -269,7 +270,7 @@ export class CombatSystem {
             continue outer;
           }
           e.lastHitBySpell = true;
-          e.takeHit(p.damage, Math.sign(p.vx) || 1);
+          e.takeHit(p.damage, Math.sign(p.vx) || 1, KNOCKBACK.spell);
           this.damageNumbers.spawn(e.body.centerX, e.body.pos.y, p.damage, p.color);
           ctx.onProgress(ctx.character.gainSkillXp(p.skill, XP_RANGED_HIT));
           continue outer; // projectile consumed

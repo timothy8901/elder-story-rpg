@@ -51,7 +51,7 @@ export class Dragon extends Enemy {
     return this.breathActive > 0 ? this.breathZone : null;
   }
 
-  override takeHit(damage: number, _knockDir: number): void {
+  override takeHit(damage: number, _knockDir: number, _knockback?: number): void {
     if (this.isImmune()) return;
     this.health -= damage;
     this.hurtTimer = 0.16;

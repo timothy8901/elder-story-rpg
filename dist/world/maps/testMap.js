@@ -1,7 +1,7 @@
 import { COLORS, PLAYER_H, TILE_SIZE } from "../../config.js";
 import { Tilemap } from "../../physics/Tilemap.js";
 import { TileType } from "../../types.js";
-import { rightExit } from "./builder.js";
+import { groundPortal } from "./builder.js";
 const COLS = 50;
 const ROWS = 18;
 /**
@@ -26,14 +26,15 @@ export function createTestMap() {
         for (let r = r0; r <= r1; r++)
             set(col, r, t);
     };
-    // World boundaries: floor along the bottom + a wall on the (closed) west side.
-    // The east side is OPEN — a walk-off gate leads to the Sunlit Meadow.
+    // World boundaries: floor along the bottom + walls on BOTH sides (sealed).
+    // Travel happens only through the ground portals, never off the edges.
     fillRow(17, 0, COLS - 1, TileType.Solid);
     fillCol(0, 0, ROWS - 1, TileType.Solid);
-    // Main ground (rows 14–16), with a gap/pit at columns 22–28, extended east.
+    fillCol(COLS - 1, 0, ROWS - 1, TileType.Solid);
+    // Main ground (rows 14–16), with a gap/pit at columns 22–28.
     for (let row = 14; row <= 16; row++) {
         fillRow(row, 1, 21, TileType.Solid);
-        fillRow(row, 29, COLS - 1, TileType.Solid);
+        fillRow(row, 29, COLS - 2, TileType.Solid);
     }
     // Interior wall / step rising from the ground (bump into it, or jump on top).
     fillCol(18, 11, 13, TileType.Solid);
@@ -57,10 +58,10 @@ export function createTestMap() {
             default: spawn,
             // Climbing back out of the cave: on the ground just east of the pit.
             fromCave: { x: 30 * TILE_SIZE, y: 14 * TILE_SIZE - PLAYER_H - 1 },
-            // Arriving from the Meadow: just inside the east edge.
-            fromEast: { x: 46 * TILE_SIZE, y: 14 * TILE_SIZE - PLAYER_H - 1 },
-            // Descending from the Throat of the World.
-            fromThroat: { x: 42 * TILE_SIZE, y: 14 * TILE_SIZE - PLAYER_H - 1 },
+            // Returning from the Meadow (beside the Meadow portal).
+            fromMeadow: { x: 43 * TILE_SIZE, y: 14 * TILE_SIZE - PLAYER_H - 1 },
+            // Descending from the Throat of the World (beside the mountain portal).
+            fromThroat: { x: 37 * TILE_SIZE, y: 14 * TILE_SIZE - PLAYER_H - 1 },
         },
         bgColor: COLORS.sky,
         enemySpawns: [
@@ -76,24 +77,18 @@ export function createTestMap() {
             { story: "courier", name: "Courier", color: "#b9a04a", x: 20 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
         ],
         exits: [
-            // Descend into the cave through the gap beneath the bridge (↓ + jump).
+            // Drop through the bridge into the pit, then press ↑ to descend into the cave.
             {
                 rect: { x: 24 * TILE_SIZE, y: 16 * TILE_SIZE, w: 2 * TILE_SIZE, h: TILE_SIZE },
                 toMapId: "cave",
                 toSpawn: "fromOverworld",
-                label: "Hollowdeep Cave ↓",
+                label: "Hollowdeep Cave",
                 kind: "portal",
             },
             // The mountain path to the Greybeards.
-            {
-                rect: { x: 44 * TILE_SIZE, y: 12 * TILE_SIZE, w: TILE_SIZE, h: 2 * TILE_SIZE },
-                toMapId: "throat",
-                toSpawn: "fromOverworld",
-                label: "Throat of the World ↥",
-                kind: "portal",
-            },
-            // Walk off the east edge into the Sunlit Meadow.
-            rightExit(COLS, ROWS, "meadow", "fromWest", "Sunlit Meadow ►"),
+            groundPortal(40, 14, "throat", "fromOverworld", "Throat of the World"),
+            // East to the Sunlit Meadow.
+            groundPortal(46, 14, "meadow", "fromOverworld", "Sunlit Meadow"),
         ],
     };
 }
