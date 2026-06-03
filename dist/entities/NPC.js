@@ -12,6 +12,7 @@ export class NPC {
         this.facing = -1;
         this.x = init.x;
         this.y = init.y;
+        this.vendor = init.vendor ?? false;
         if (init.faction) {
             this.faction = init.faction;
             this.name = FACTION_DATA[init.faction].recruiter;

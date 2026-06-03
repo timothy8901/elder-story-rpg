@@ -16,6 +16,7 @@ import { SaveManager, type SaveState } from "../save/SaveManager.js";
 import { HUD } from "../ui/HUD.js";
 import { Menu } from "../ui/Menu.js";
 import { Dialogue, type DialogueNode } from "../ui/Dialogue.js";
+import { Shop } from "../ui/Shop.js";
 import { Factions } from "../world/Factions.js";
 import { FACTION_DATA, type FactionId } from "../world/factionData.js";
 import { QuestLog } from "../world/Quests.js";
@@ -24,7 +25,7 @@ import type { GameMap, MapExit } from "../world/GameMap.js";
 import { createMap, FIRST_MAP_ID } from "../world/maps/index.js";
 import { drawBackground } from "../rendering/Background.js";
 import { drawTilemap } from "../rendering/Tiles.js";
-import { drawNpc, drawPortal } from "../rendering/sprites.js";
+import { drawNpc, drawPortal, drawQuestArrow, type NpcMarker } from "../rendering/sprites.js";
 import { Camera } from "./Camera.js";
 import { Input } from "./Input.js";
 import { Renderer } from "./Renderer.js";
@@ -54,6 +55,7 @@ export class Game {
   private readonly factions = new Factions();
   private readonly mainQuest = new MainQuest();
   private readonly dialogue = new Dialogue();
+  private readonly shop = new Shop();
   private npcs: NPC[] = [];
   // Dragon Shouts.
   private selectedShout: ShoutId | null = null;
@@ -160,6 +162,19 @@ export class Game {
       return;
     }
 
+    // The shop takes over while open.
+    if (this.shop.open) {
+      const msgs = this.shop.update(this.input, this.inventory);
+      if (msgs.length) {
+        for (const m of msgs) this.hud.pushToast(m, "#ffe45e");
+        this.recomputeStats(); // selling/buying gear shouldn't change derived stats, but keep HUD consistent
+        this.autosave();
+      }
+      this.hud.update(dt);
+      this.input.clearTransients();
+      return;
+    }
+
     if (this.input.anyPressed(MENU_KEYS)) {
       this.menu.toggle();
       this.autosave(); // saving on open (and close) per spec
@@ -182,13 +197,14 @@ export class Game {
   private updateWorld(dt: number): void {
     const ctx = this.combatContext();
 
-    // Talk to a nearby faction recruiter.
+    // Interact with a nearby NPC: vendors open the shop, others talk.
     if (this.input.justPressed("KeyE")) {
       const npc = this.nearbyNpc();
       if (npc) {
-        this.talkTo(npc);
+        if (npc.vendor) this.shop.start(npc.name);
+        else this.talkTo(npc);
         this.input.clearTransients();
-        return; // dialogue takes over next frame
+        return; // shop/dialogue takes over next frame
       }
     }
 
@@ -679,9 +695,15 @@ export class Game {
     });
     this.player.render(r, cam, time);
     this.combat.render(r, cam, time); // enemies, projectiles, floating numbers
+    // Down-arrows over enemies tied to an active quest objective.
+    r.withWorld(cam, (ctx) => {
+      for (const e of this.combat.enemies) {
+        if (this.isQuestTarget(e)) drawQuestArrow(ctx, e.body.centerX, e.body.pos.y, time);
+      }
+    });
 
     if (this.menu.open) {
-      this.menu.render(r, this.character, this.inventory, this.equipment, this.factions);
+      this.menu.render(r, this.character, this.inventory, this.equipment, this.factions, this.mainQuest);
     } else {
       this.hud.render(r, this.character, this.equipment, SPELLS[this.selectedSpell]!.name, this.inventory.gold);
 
@@ -698,7 +720,7 @@ export class Game {
       // "Press E" prompt over a nearby NPC.
       const npc = this.nearbyNpc();
       if (npc && !this.dialogue.open) {
-        r.text("Press E to talk", npc.centerX - cam.x, npc.y - cam.y - 38, "#ffffff", "bold 11px monospace", "center");
+        r.text(`Press E to ${npc.vendor ? "trade" : "talk"}`, npc.centerX - cam.x, npc.y - cam.y - 38, "#ffffff", "bold 11px monospace", "center");
       }
       // "Press ↑" prompt when standing in a ground portal.
       const exit = this.currentExit();
@@ -714,23 +736,41 @@ export class Game {
     }
 
     this.dialogue.render(r);
+    this.shop.render(r, this.inventory);
     if (this.debug) this.renderDebug(fps);
   }
 
-  /** Quest marker shown above an NPC: "!" available, "?" turn-in ready. */
-  private npcMarker(npc: NPC): "" | "!" | "?" {
+  /** Marker above an NPC: "$" vendor, "?" has a quest to give, "!" quest to turn in. */
+  private npcMarker(npc: NPC): NpcMarker {
+    if (npc.vendor) return "$";
     if (npc.faction) {
-      if (this.factions.isRival(npc.faction)) return "";
-      const s = this.factions.get(npc.faction);
-      if (!s.joined) return "!";
-      if (s.stage === 2) return "?";
+      const id = npc.faction;
+      if (this.factions.isRival(id)) return "";
+      const s = this.factions.get(id);
+      if (!s.joined) return "?"; // a quest (membership) to offer
+      if (s.stage === 2) return "!"; // objective met — turn it in
       return "";
     }
-    // Story characters.
+    // Main-story characters.
     const st = this.mainQuest.stage;
-    if (npc.story === "courier") return st === "notStarted" ? "!" : "";
-    if (npc.story === "arngeir") return st === "wayOfVoice" || st === "alduinsBane" ? "!" : "";
+    if (npc.story === "courier") return st === "notStarted" ? "?" : "";
+    if (npc.story === "arngeir") return st === "wayOfVoice" || st === "alduinsBane" ? "?" : "";
     return "";
+  }
+
+  /** True if slaying this enemy advances a specific active quest objective. */
+  private isQuestTarget(e: Enemy): boolean {
+    if (e.isDragon) {
+      const mq = this.mainQuest.stage;
+      if (mq === "dragonRising" || mq === "bladeInDark" || mq === "dragonslayer") return true;
+      const blades = this.factions.get("blades");
+      if (blades.joined && blades.stage === 1) return true;
+    }
+    if (e.kind === "Draugr Lord") {
+      const companions = this.factions.get("companions");
+      if (companions.joined && companions.stage === 1) return true;
+    }
+    return false;
   }
 
   private renderBeastStatus(): void {

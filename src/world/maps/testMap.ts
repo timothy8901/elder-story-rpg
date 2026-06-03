@@ -85,6 +85,8 @@ export function createTestMap(): GameMap {
       { faction: "college", x: 16 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
       // Main-story quest giver.
       { story: "courier", name: "Courier", color: "#b9a04a", x: 20 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
+      // General-goods vendor (opens the shop).
+      { vendor: true, name: "Belethor", color: "#caa15a", x: 2 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
     ],
     exits: [
       // Drop through the bridge into the pit, then press ↑ to descend into the cave.

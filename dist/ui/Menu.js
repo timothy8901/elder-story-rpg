@@ -3,7 +3,7 @@ import { makeItem } from "../items/loot.js";
 import { skillXpToNext } from "../progression/Character.js";
 import { SKILLS, SKILL_IDS } from "../progression/skills.js";
 import { FACTION_DATA, FACTION_IDS } from "../world/factionData.js";
-const PAGES = ["Stats & Skills", "Inventory", "Equipment", "Crafting", "Factions"];
+const PAGES = ["Stats & Skills", "Inventory", "Equipment", "Crafting", "Factions", "Quests"];
 /**
  * The pause-screen character sheet rendered on the canvas: attributes & skills
  * (with perk and attribute-point spending), inventory (equip/use), the nine
@@ -14,7 +14,7 @@ export class Menu {
     constructor() {
         this.open = false;
         this.page = 0;
-        this.cursor = [0, 0, 0, 0, 0];
+        this.cursor = [0, 0, 0, 0, 0, 0];
         this.crafts = [
             {
                 label: "Forge — Improve Main-Hand weapon (+damage)",
@@ -123,7 +123,8 @@ export class Menu {
                     this.craft(character, inventory, equipment, result);
                 break;
             case "Factions":
-                break; // read-only summary
+            case "Quests":
+                break; // read-only summaries
         }
         return result;
     }
@@ -139,6 +140,8 @@ export class Menu {
                 return this.crafts.length;
             case "Factions":
                 return FACTION_IDS.length;
+            case "Quests":
+                return 1; // read-only journal
         }
     }
     updateStats(input, c, result, activate) {
@@ -205,18 +208,19 @@ export class Menu {
         result.equipmentChanged = true;
     }
     // --- Rendering ----------------------------------------------------------
-    render(r, character, inventory, equipment, factions) {
+    render(r, character, inventory, equipment, factions, mainQuest) {
         const x = 40;
         const y = 28;
         const w = r.width - 80;
         const h = r.height - 56;
         r.fillRectScreen(0, 0, r.width, r.height, "rgba(6,8,14,0.78)");
         r.fillRectScreen(x, y, w, h, "rgba(16,20,30,0.97)");
-        // Tabs.
+        // Tabs (spaced to fit the panel width).
+        const tabW = (w - 40) / PAGES.length;
         PAGES.forEach((name, i) => {
-            const tx = x + 20 + i * 180;
+            const tx = x + 20 + i * tabW;
             const active = i === this.page;
-            r.text(name, tx, y + 26, active ? "#ffd45e" : "#7e879a", active ? "bold 14px monospace" : "14px monospace");
+            r.text(name, tx, y + 26, active ? "#ffd45e" : "#7e879a", active ? "bold 13px monospace" : "13px monospace");
         });
         r.fillRectScreen(x, y + 36, w, 1, "#2c3550");
         const cx = x + 24;
@@ -237,6 +241,9 @@ export class Menu {
                 break;
             case "Factions":
                 this.renderFactions(r, factions, cx, cy, cursor);
+                break;
+            case "Quests":
+                this.renderQuests(r, mainQuest, factions, cx, cy);
                 break;
         }
         r.text("[←→] tab   [↑↓] select   [Enter] use/equip/craft   [1/2/3] raise attribute   [I or Esc] close", r.width / 2, y + h - 14, "#7e879a", "12px monospace", "center");
@@ -352,6 +359,40 @@ export class Menu {
             r.text(status, x, ry + 16, color, "12px monospace");
             r.text(d.rewardText, x, ry + 31, "#7e879a", "11px monospace");
         });
+    }
+    renderQuests(r, mainQuest, factions, x, y) {
+        r.text("Journal — your active quests", x, y, "#cfe3ff", "13px monospace");
+        let ry = y + 36;
+        // Main quest.
+        r.text("⚔ The World-Eater (Main Quest)", x, ry, "#ffd45e", "bold 14px monospace");
+        const mqText = mainQuest.stage === "complete"
+            ? "Completed — Alduin is slain and Skyrim is saved."
+            : mainQuest.stage === "notStarted"
+                ? "Not started — seek the Courier in Greenreach Vale."
+                : mainQuest.objective;
+        r.text(mqText, x, ry + 17, "#e8edf4", "12px monospace");
+        ry += 50;
+        // Active faction quests (joined, not yet complete).
+        const active = FACTION_IDS.filter((id) => factions.isJoined(id) && !factions.isPromoted(id));
+        r.text("Faction Quests", x, ry, "#ffd45e", "bold 14px monospace");
+        ry += 22;
+        if (active.length === 0) {
+            r.text("None active. Recruiters across the land show a '?' — talk to them to join.", x, ry, "#8b94a6", "12px monospace");
+        }
+        else {
+            for (const id of active) {
+                const d = FACTION_DATA[id];
+                const s = factions.get(id);
+                const detail = s.stage === 2
+                    ? `Objective complete — report to ${d.recruiter}.`
+                    : d.objectiveType === "killBoss"
+                        ? d.objective
+                        : `${d.objective} (${s.progress}/${d.objectiveCount})`;
+                r.text(`• ${d.name}`, x, ry, "#ffd45e", "bold 12px monospace");
+                r.text(detail, x + 16, ry + 15, "#e8edf4", "12px monospace");
+                ry += 38;
+            }
+        }
     }
 }
 /** One-line item stat summary for list views. */

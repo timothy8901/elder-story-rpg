@@ -11,6 +11,8 @@ export interface NpcInit {
   story?: string;
   name?: string;
   color?: string;
+  /** A shopkeeper — interacting opens the buy/sell shop. */
+  vendor?: boolean;
 }
 
 /**
@@ -21,6 +23,7 @@ export interface NpcInit {
 export class NPC {
   readonly faction?: FactionId;
   readonly story?: string;
+  readonly vendor: boolean;
   readonly name: string;
   readonly color: string;
   readonly x: number;
@@ -33,6 +36,7 @@ export class NPC {
   constructor(init: NpcInit) {
     this.x = init.x;
     this.y = init.y;
+    this.vendor = init.vendor ?? false;
     if (init.faction) {
       this.faction = init.faction;
       this.name = FACTION_DATA[init.faction].recruiter;

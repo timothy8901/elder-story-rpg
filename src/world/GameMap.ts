@@ -11,6 +11,8 @@ export interface NpcSpawn {
   story?: string;
   name?: string;
   color?: string;
+  /** A shopkeeper (opens the buy/sell shop on interact). */
+  vendor?: boolean;
 }
 
 /** Visual theme that drives background and tile rendering. */

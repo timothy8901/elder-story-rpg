@@ -508,7 +508,9 @@ export function drawDragon(ctx: CanvasRenderingContext2D, d: Dragon, time: numbe
 // NPCs — robed faction recruiters with a name tag + quest marker
 // ---------------------------------------------------------------------------
 
-export function drawNpc(ctx: CanvasRenderingContext2D, npc: NPC, marker: "" | "!" | "?", time: number): void {
+export type NpcMarker = "" | "?" | "!" | "$";
+
+export function drawNpc(ctx: CanvasRenderingContext2D, npc: NPC, marker: NpcMarker, time: number): void {
   const { x, y, w, h, color, facing } = npc;
   const cx = x + w / 2;
   const feetY = y + h;
@@ -564,13 +566,29 @@ export function drawNpc(ctx: CanvasRenderingContext2D, npc: NPC, marker: "" | "!
   ctx.fillStyle = "#e8edf4";
   ctx.fillText(npc.name, cx, y - 11);
 
-  // Quest marker bobbing above.
+  // Marker bobbing above: "?" quest to give, "!" quest to complete, "$" vendor.
   if (marker) {
     const by = y - 34 + Math.sin(time * 4) * 2;
-    ctx.font = "bold 18px monospace";
-    ctx.fillStyle = marker === "!" ? "#ffd45e" : "#8ad8ff";
+    ctx.font = "bold 20px monospace";
+    ctx.fillStyle = marker === "!" ? "#7dffa0" : marker === "$" ? "#ffe45e" : "#ffd45e";
+    ctx.textAlign = "center";
     ctx.fillText(marker, cx, by);
   }
+}
+
+/** A small bobbing down-arrow drawn above an enemy tied to an active quest. */
+export function drawQuestArrow(ctx: CanvasRenderingContext2D, cx: number, topY: number, time: number): void {
+  const y = topY - 14 + Math.sin(time * 5) * 3;
+  ctx.fillStyle = "#ffd45e";
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, y);
+  ctx.lineTo(cx + 6, y);
+  ctx.lineTo(cx, y + 9);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
 }
 
 // ---------------------------------------------------------------------------
