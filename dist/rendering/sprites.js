@@ -1,3 +1,4 @@
+import { atlas } from "./Atlas.js";
 /**
  * Procedural "pixel-art-adjacent" sprite drawing. Everything is composed from
  * canvas primitives (rounded rects, arcs, gradients) so the look is bright and
@@ -17,6 +18,42 @@ export function drawPlayer(ctx, p, time) {
     const h = b.h;
     const cx = x + w / 2;
     const feetY = y + h;
+    // Pixel-art sprite path (falls back to the procedural figure below).
+    const pkey = p.beastMode ? "werewolf" : "hero";
+    if (atlas.has(pkey)) {
+        ctx.save();
+        shadow(ctx, cx, feetY, w * 0.5);
+        if (p.sneaking)
+            ctx.globalAlpha = 0.9;
+        atlas.blitFeet(ctx, pkey, cx, feetY, h * (p.sneaking ? 1.32 : 1.5), dir < 0);
+        ctx.globalAlpha = 1;
+        if (p.attackTimer > 0)
+            slashFx(ctx, cx, y + h * 0.45, dir, 1 - p.attackTimer / 0.18);
+        if (p.blocking) {
+            const sxp = cx + dir * 13;
+            const syp = y + h * 0.55;
+            ctx.lineJoin = "round";
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = OUTLINE;
+            ctx.fillStyle = "#cfd6e0";
+            rr(ctx, sxp - 5, syp - 9, 10, 18, 5);
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = "#9aa6b6";
+            ctx.beginPath();
+            ctx.arc(sxp, syp, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        if (p.hurtTimer > 0) {
+            ctx.globalAlpha = 0.4;
+            ctx.fillStyle = "#ff5555";
+            rr(ctx, x - 2, y - 4, w + 4, h + 6, 8);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+        return;
+    }
     const crouch = p.sneaking ? 7 : 0;
     const moving = b.onGround && Math.abs(b.vel.x) > 20;
     const phase = time * 12;
@@ -172,6 +209,26 @@ function drawArmWeapon(ctx, p, cx, y, shift, dir, skin, behind) {
 // ---------------------------------------------------------------------------
 // Enemies — cute mushroom monsters
 // ---------------------------------------------------------------------------
+/** Map an enemy `kind` to its atlas sprite, and a per-sprite height factor. */
+function enemyKey(kind) {
+    switch (kind) {
+        case "Wolf":
+            return "wolf";
+        case "Bandit":
+            return "bandit";
+        case "Draugr":
+            return "draugr";
+        case "Draugr Lord":
+            return "draugr_overlord";
+        default:
+            return "bandit";
+    }
+}
+function enemyScale(key) {
+    // Quadrupeds sit in the lower part of the cell, so scale them up to read at a
+    // comparable size to the upright figures.
+    return key === "wolf" ? 1.9 : 1.6;
+}
 function capColorFor(kind) {
     switch (kind) {
         case "Wolf":
@@ -195,6 +252,23 @@ export function drawEnemy(ctx, e, time) {
     const cx = x + w / 2;
     const feetY = y + h;
     const dir = b.facing;
+    // Pixel-art sprite path (falls back to the mushroom figure below).
+    const ekey = enemyKey(e.kind);
+    if (atlas.has(ekey)) {
+        ctx.save();
+        shadow(ctx, cx, feetY, w * 0.5);
+        atlas.blitFeet(ctx, ekey, cx, feetY, h * enemyScale(ekey), dir < 0);
+        if (e.hurtTimer > 0) {
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = "#ffffff";
+            rr(ctx, x, y, w, h, 8);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+        healthBar(ctx, e.health, e.maxHealth, cx, y - 10, w + 4);
+        return;
+    }
     const bob = Math.sin(time * 6 + cx * 0.12) * 1.4;
     const { cap, capShade } = capColorFor(e.kind);
     ctx.save();
@@ -458,6 +532,37 @@ export function drawDwarf(ctx, d, time) {
     const bronzeDk = d.boss ? "#8a6e2c" : "#6e5428";
     const steel = "#80808e";
     const beard = d.boss ? "#d8c074" : "#b9a06a";
+    // Pixel-art sprite path (falls back to the procedural figure below).
+    const dkey = d.boss ? "dwarven_warlord" : "dwarven_battlemage";
+    if (atlas.has(dkey)) {
+        ctx.save();
+        shadow(ctx, cx, feetY, w * 0.55);
+        atlas.blitFeet(ctx, dkey, cx, feetY, h * 1.55, dir < 0);
+        if (d.shielded) {
+            ctx.strokeStyle = "rgba(120,200,255,0.85)";
+            ctx.fillStyle = `rgba(120,200,255,${0.12 + 0.06 * Math.sin(time * 8)})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(cx, y + h * 0.45, w * 0.75, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+        if (d.hurtTimer > 0) {
+            ctx.globalAlpha = 0.45;
+            ctx.fillStyle = "#ffffff";
+            rr(ctx, x, y, w, h, 6);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+        ctx.restore();
+        const frac = Math.max(0, d.health / d.maxHealth);
+        healthBar(ctx, d.health, d.maxHealth, cx, y - (d.boss ? 14 : 10), w + 4, {
+            hi: frac > 0.4 ? "#cda94e" : "#e0584a",
+            name: d.boss ? d.kind : undefined,
+            nameColor: "#e8d27a",
+        });
+        return;
+    }
     ctx.save();
     ctx.lineJoin = "round";
     ctx.lineWidth = 1.5;
@@ -582,6 +687,16 @@ export function drawNpc(ctx, npc, marker, time) {
     const { x, y, w, h, color, facing } = npc;
     const cx = x + w / 2;
     const feetY = y + h;
+    // Pixel-art sprite path (falls back to the robed figure below).
+    const nkey = npcKey(npc);
+    if (atlas.has(nkey)) {
+        ctx.save();
+        shadow(ctx, cx, feetY, w * 0.5);
+        atlas.blitFeet(ctx, nkey, cx, feetY, h * 1.5, facing < 0);
+        ctx.restore();
+        drawNpcTag(ctx, npc, marker, time, cx, y);
+        return;
+    }
     ctx.save();
     ctx.lineJoin = "round";
     ctx.lineWidth = 1.5;
@@ -617,7 +732,22 @@ export function drawNpc(ctx, npc, marker, time) {
     eye(ctx, cx + facing * 3 + 2, headCy + 2);
     eye(ctx, cx + facing * 3 - 3, headCy + 2);
     ctx.restore();
-    // Name tag.
+    drawNpcTag(ctx, npc, marker, time, cx, y);
+}
+/** Choose the atlas sprite for an NPC by vendor/faction/story identity. */
+function npcKey(npc) {
+    if (npc.vendor)
+        return "npc_merchant";
+    if (npc.faction)
+        return `npc_${npc.faction}`;
+    if (npc.story === "arngeir")
+        return "npc_arngeir";
+    if (npc.story === "calcelmo")
+        return "npc_calcelmo";
+    return "npc_courier";
+}
+/** Floating name tag + quest marker, shared by both NPC render paths. */
+function drawNpcTag(ctx, npc, marker, time, cx, y) {
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     ctx.font = "11px monospace";
     ctx.textAlign = "center";
@@ -804,5 +934,45 @@ function spot(ctx, x, y, r) {
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
+}
+/** A bright crescent sweep in front of the player during a melee swing (t: 0..1). */
+function slashFx(ctx, cx, cy, dir, t) {
+    const a = -1.0 + t * 2.0; // sweep top -> bottom
+    ctx.save();
+    ctx.translate(cx + dir * 6, cy);
+    ctx.scale(dir, 1);
+    ctx.globalAlpha = 0.35 + 0.5 * (1 - t);
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgba(255,255,255,0.95)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(0, 0, 26, a - 0.55, a + 0.1);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(170,215,255,0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 21, a - 0.55, a + 0.1);
+    ctx.stroke();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+}
+/** A floating health bar (drawn only when damaged); optional name above it. */
+function healthBar(ctx, health, max, cx, by, bw, opts) {
+    if (health >= max)
+        return;
+    const frac = Math.max(0, health / max);
+    const bx = cx - bw / 2;
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    rr(ctx, bx - 1, by - 1, bw + 2, 6, 3);
+    ctx.fill();
+    ctx.fillStyle = opts?.hi ?? (frac > 0.5 ? "#5cd167" : frac > 0.25 ? "#e0c14a" : "#e0584a");
+    rr(ctx, bx, by, bw * frac, 4, 2);
+    ctx.fill();
+    if (opts?.name) {
+        ctx.fillStyle = opts.nameColor ?? "#ffffff";
+        ctx.font = "bold 11px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(opts.name, cx, by - 5);
+    }
 }
 //# sourceMappingURL=sprites.js.map
