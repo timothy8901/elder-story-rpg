@@ -11,6 +11,14 @@ const SPEED = 55;
 const AGGRO_RANGE = 240;
 const CHASE_SPEED = 95;
 
+/** A ranged attack an enemy launches this frame (consumed by the CombatSystem). */
+export interface RangedAttack {
+  vx: number;
+  vy: number;
+  damage: number;
+  color: string;
+}
+
 /**
  * A basic melee enemy with patrol + chase behavior. It walks back and forth,
  * turns at walls and ledges, charges the player when close, and can be feared
@@ -48,6 +56,10 @@ export class Enemy {
   applyDragonrend(_seconds: number): void {}
   /** An active ranged damage zone (e.g. fire breath), or null. */
   attackZone(): Rect | null {
+    return null;
+  }
+  /** A projectile the enemy fires this frame (e.g. a Dwarf's destruction bolt), or null. */
+  consumeRangedAttack(): RangedAttack | null {
     return null;
   }
 

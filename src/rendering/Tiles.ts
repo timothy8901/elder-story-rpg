@@ -31,6 +31,7 @@ export function drawTilemap(r: Renderer, cam: Camera, map: Tilemap, theme: MapTh
         const y = row * T;
         if (tile === TileType.Solid) {
           if (theme === "cave") drawStone(ctx, map, col, row, x, y);
+          else if (theme === "dwarven") drawMetal(ctx, map, col, row, x, y);
           else drawEarth(ctx, map, col, row, x, y);
         } else {
           drawFoothold(ctx, x, y, theme);
@@ -127,11 +128,34 @@ function drawStone(ctx: CanvasRenderingContext2D, map: Tilemap, col: number, row
   }
 }
 
+function drawMetal(ctx: CanvasRenderingContext2D, map: Tilemap, col: number, row: number, x: number, y: number): void {
+  const topOpen = map.tileAt(col, row - 1) !== TileType.Solid;
+  const g = ctx.createLinearGradient(0, y, 0, y + T);
+  g.addColorStop(0, "#7a6336");
+  g.addColorStop(1, "#4f3f20");
+  ctx.fillStyle = g;
+  ctx.fillRect(x, y, T, T);
+  // Rivets at the corners.
+  ctx.fillStyle = "rgba(255,210,120,0.55)";
+  ctx.fillRect(x + 4, y + 4, 2, 2);
+  ctx.fillRect(x + T - 6, y + 4, 2, 2);
+  ctx.fillRect(x + 4, y + T - 6, 2, 2);
+  ctx.fillRect(x + T - 6, y + T - 6, 2, 2);
+  // Panel seam.
+  ctx.strokeStyle = "rgba(20,14,6,0.5)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 1.5, y + 1.5, T - 3, T - 3);
+  if (topOpen) {
+    ctx.fillStyle = "#a4854a";
+    ctx.fillRect(x, y, T, 3);
+  }
+}
+
 function drawFoothold(ctx: CanvasRenderingContext2D, x: number, y: number, theme: MapTheme): void {
   const h = 11;
-  const wood = theme === "cave" ? "#5b5570" : "#9c6b3f";
-  const top = theme === "cave" ? "#7d769a" : "#c79a5e";
-  const under = theme === "cave" ? "#332f44" : "#5e3d1f";
+  const wood = theme === "cave" ? "#5b5570" : theme === "dwarven" ? "#8a6f3c" : "#9c6b3f";
+  const top = theme === "cave" ? "#7d769a" : theme === "dwarven" ? "#bfa05a" : "#c79a5e";
+  const under = theme === "cave" ? "#332f44" : theme === "dwarven" ? "#42351a" : "#5e3d1f";
 
   // Rounded plank.
   ctx.fillStyle = wood;

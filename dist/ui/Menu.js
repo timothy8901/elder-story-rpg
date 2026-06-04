@@ -208,7 +208,7 @@ export class Menu {
         result.equipmentChanged = true;
     }
     // --- Rendering ----------------------------------------------------------
-    render(r, character, inventory, equipment, factions, mainQuest) {
+    render(r, character, inventory, equipment, factions, mainQuest, dwarvenQuest) {
         const x = 40;
         const y = 28;
         const w = r.width - 80;
@@ -243,7 +243,7 @@ export class Menu {
                 this.renderFactions(r, factions, cx, cy, cursor);
                 break;
             case "Quests":
-                this.renderQuests(r, mainQuest, factions, cx, cy);
+                this.renderQuests(r, mainQuest, dwarvenQuest, factions, cx, cy);
                 break;
         }
         r.text("[←→] tab   [↑↓] select   [Enter] use/equip/craft   [1/2/3] raise attribute   [I or Esc] close", r.width / 2, y + h - 14, "#7e879a", "12px monospace", "center");
@@ -360,7 +360,7 @@ export class Menu {
             r.text(d.rewardText, x, ry + 31, "#7e879a", "11px monospace");
         });
     }
-    renderQuests(r, mainQuest, factions, x, y) {
+    renderQuests(r, mainQuest, dwarvenQuest, factions, x, y) {
         r.text("Journal — your active quests", x, y, "#cfe3ff", "13px monospace");
         let ry = y + 36;
         // Main quest.
@@ -371,7 +371,13 @@ export class Menu {
                 ? "Not started — seek the Courier in Greenreach Vale."
                 : mainQuest.objective;
         r.text(mqText, x, ry + 17, "#e8edf4", "12px monospace");
-        ry += 50;
+        ry += 46;
+        // Dwarven side quest (only once begun).
+        if (dwarvenQuest.stage !== "notStarted") {
+            r.text("⚙ Echoes of the Deep (Calcelmo)", x, ry, "#cda94e", "bold 14px monospace");
+            r.text(dwarvenQuest.stage === "complete" ? "Completed — Nchuand-Zel is silenced." : dwarvenQuest.objective, x, ry + 17, "#e8edf4", "12px monospace");
+            ry += 46;
+        }
         // Active faction quests (joined, not yet complete).
         const active = FACTION_IDS.filter((id) => factions.isJoined(id) && !factions.isPromoted(id));
         r.text("Faction Quests", x, ry, "#ffd45e", "bold 14px monospace");

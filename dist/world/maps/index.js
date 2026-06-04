@@ -1,4 +1,5 @@
 import { createCaveMap } from "./caveMap.js";
+import { createDwarvenMap } from "./dwarvenMap.js";
 import { createMeadowMap } from "./meadowMap.js";
 import { createRuinsMap } from "./ruinsMap.js";
 import { createTestMap } from "./testMap.js";
@@ -15,6 +16,8 @@ export function createMap(id) {
     switch (id) {
         case "cave":
             return createCaveMap();
+        case "dwarven":
+            return createDwarvenMap();
         case "meadow":
             return createMeadowMap();
         case "woods":

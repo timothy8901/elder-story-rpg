@@ -62,11 +62,13 @@ export class CombatSystem {
   readonly damageNumbers = new DamageNumbers();
   private hits: MeleeHit[] = [];
   private projectiles: Projectile[] = [];
+  private enemyProjectiles: Projectile[] = [];
 
   setEnemies(enemies: Enemy[]): void {
     this.enemies = enemies;
     this.hits = [];
     this.projectiles = [];
+    this.enemyProjectiles = [];
   }
 
   /** Spawn a melee swing hitbox in front of the player. */
@@ -199,7 +201,7 @@ export class CombatSystem {
     this.updateMeleeHits(dt, ctx);
     this.updateProjectiles(dt, ctx);
 
-    // Enemies: AI + contact damage + ranged attack zones (dragon fire breath).
+    // Enemies: AI + contact damage + ranged attack zones (dragon fire breath) + bolts.
     const pb = ctx.player.body;
     for (const e of this.enemies) {
       e.update(dt, map, pb.centerX, pb.centerY);
@@ -213,7 +215,12 @@ export class CombatSystem {
         ctx.onPlayerDamaged(e.breathDamage, knockDir);
         e.attackCooldown = 0.8;
       }
+      const ra = e.consumeRangedAttack();
+      if (ra) {
+        this.enemyProjectiles.push({ x: e.body.centerX, y: e.body.centerY - 4, vx: ra.vx, vy: ra.vy, life: 2.5, damage: ra.damage, skill: "destruction", color: ra.color });
+      }
     }
+    this.updateEnemyProjectiles(dt, ctx);
 
     // Remove the dead, granting loot.
     const survivors: Enemy[] = [];
@@ -281,6 +288,26 @@ export class CombatSystem {
     this.projectiles = alive;
   }
 
+  /** Move enemy bolts; damage the player on contact, despawn on walls/timeout. */
+  private updateEnemyProjectiles(dt: number, ctx: CombatContext): void {
+    const { map } = ctx;
+    const pb = ctx.player.body;
+    const alive: Projectile[] = [];
+    for (const p of this.enemyProjectiles) {
+      p.life -= dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      if (p.life <= 0) continue;
+      if (map.tileAt(map.colAt(p.x), map.rowAt(p.y)) === TileType.Solid) continue;
+      if (intersects({ x: p.x - 5, y: p.y - 5, w: 10, h: 10 }, pb.rect)) {
+        ctx.onPlayerDamaged(p.damage, Math.sign(p.vx) || 1);
+        continue;
+      }
+      alive.push(p);
+    }
+    this.enemyProjectiles = alive;
+  }
+
   private nearestEnemy(x: number, y: number, maxDist: number): Enemy | null {
     let best: Enemy | null = null;
     let bestD = maxDist;
@@ -298,6 +325,7 @@ export class CombatSystem {
     for (const e of this.enemies) e.render(r, cam, time);
     r.withWorld(cam, (ctx) => {
       for (const p of this.projectiles) drawProjectile(ctx, p, time);
+      for (const p of this.enemyProjectiles) drawProjectile(ctx, p, time);
     });
     this.damageNumbers.render(r, cam);
   }

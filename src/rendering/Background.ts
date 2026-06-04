@@ -9,7 +9,58 @@ import type { GameMap } from "../world/GameMap.js";
  */
 export function drawBackground(r: Renderer, cam: Camera, map: GameMap, time: number): void {
   if (map.theme === "cave") drawCave(r, cam, time);
+  else if (map.theme === "dwarven") drawDwarven(r, cam, time);
   else drawField(r, cam, time);
+}
+
+/** A Dwemer ruin: warm bronze gloom with glowing pipes, gears and rune motifs. */
+function drawDwarven(r: Renderer, cam: Camera, time: number): void {
+  const ctx = r.ctx;
+  const { width: W, height: H } = r;
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, "#241a10");
+  bg.addColorStop(1, "#140d07");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Distant pipe-work silhouettes.
+  const span = 220;
+  const off = wrap(cam.x * 0.3, span);
+  ctx.strokeStyle = "#3a2c18";
+  ctx.lineWidth = 8;
+  for (let x = off - span; x < W + span; x += span) {
+    ctx.beginPath();
+    ctx.moveTo(x + 40, H * 0.2);
+    ctx.lineTo(x + 40, H * 0.8);
+    ctx.lineTo(x + 140, H * 0.8);
+    ctx.stroke();
+  }
+
+  // Glowing gears + rune lights, gently pulsing.
+  const gspan = 300;
+  const goff = wrap(cam.x * 0.5, gspan);
+  for (let x = goff - gspan, i = 0; x < W + gspan; x += gspan, i++) {
+    const pulse = 0.5 + 0.5 * Math.sin(time * 2 + i);
+    gear(ctx, x + 90, H * 0.32, 22, `rgba(255,180,70,${0.18 + pulse * 0.18})`);
+    const glow = ctx.createRadialGradient(x + 200, H * 0.6, 1, x + 200, H * 0.6, 26);
+    glow.addColorStop(0, `rgba(120,220,255,${0.4 + pulse * 0.35})`);
+    glow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x + 200, H * 0.6, 26, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function gear(ctx: CanvasRenderingContext2D, x: number, y: number, rad: number, color: string): void {
+  ctx.fillStyle = color;
+  for (let t = 0; t < Math.PI * 2; t += Math.PI / 6) {
+    ctx.fillRect(x + Math.cos(t) * rad - 3, y + Math.sin(t) * rad - 3, 6, 6);
+  }
+  ctx.beginPath();
+  ctx.arc(x, y, rad * 0.7, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** Wrap an offset into [-span, 0) so a repeating motif tiles seamlessly. */

@@ -1,6 +1,7 @@
 import type { Item } from "../items/Item.js";
 import type { CharacterSave } from "../progression/Character.js";
 import type { MainQuestSave } from "../story/MainQuest.js";
+import type { DwarvenQuestSave } from "../story/DwarvenQuest.js";
 import type { FactionsSave } from "../world/Factions.js";
 import type { QuestSave } from "../world/Quests.js";
 
@@ -16,6 +17,7 @@ export interface SaveState {
   quests: QuestSave;
   factions: FactionsSave;
   mainQuest: MainQuestSave;
+  dwarvenQuest: DwarvenQuestSave;
 }
 
 const KEY = "elder-story-rpg/save/v1";

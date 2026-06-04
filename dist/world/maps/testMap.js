@@ -77,6 +77,8 @@ export function createTestMap() {
             { story: "courier", name: "Courier", color: "#b9a04a", x: 20 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
             // General-goods vendor (opens the shop).
             { vendor: true, name: "Belethor", color: "#caa15a", x: 2 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
+            // Dwemer scholar — gives the "Echoes of the Deep" quest.
+            { story: "calcelmo", name: "Calcelmo", color: "#6f6bd6", x: 33 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
         ],
         exits: [
             // Drop through the bridge into the pit, then press ↑ to descend into the cave.

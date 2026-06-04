@@ -23,6 +23,10 @@ export class Enemy {
     attackZone() {
         return null;
     }
+    /** A projectile the enemy fires this frame (e.g. a Dwarf's destruction bolt), or null. */
+    consumeRangedAttack() {
+        return null;
+    }
     constructor(x, y, opts) {
         this.dead = false;
         this.hurtTimer = 0;

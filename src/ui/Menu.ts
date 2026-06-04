@@ -9,6 +9,7 @@ import { SKILLS, SKILL_IDS, type SkillId } from "../progression/skills.js";
 import type { Factions } from "../world/Factions.js";
 import { FACTION_DATA, FACTION_IDS } from "../world/factionData.js";
 import type { MainQuest } from "../story/MainQuest.js";
+import type { DwarvenQuest } from "../story/DwarvenQuest.js";
 
 const PAGES = ["Stats & Skills", "Inventory", "Equipment", "Crafting", "Factions", "Quests"] as const;
 
@@ -213,7 +214,7 @@ export class Menu {
 
   // --- Rendering ----------------------------------------------------------
 
-  render(r: Renderer, character: Character, inventory: Inventory, equipment: Equipment, factions: Factions, mainQuest: MainQuest): void {
+  render(r: Renderer, character: Character, inventory: Inventory, equipment: Equipment, factions: Factions, mainQuest: MainQuest, dwarvenQuest: DwarvenQuest): void {
     const x = 40;
     const y = 28;
     const w = r.width - 80;
@@ -251,7 +252,7 @@ export class Menu {
         this.renderFactions(r, factions, cx, cy, cursor);
         break;
       case "Quests":
-        this.renderQuests(r, mainQuest, factions, cx, cy);
+        this.renderQuests(r, mainQuest, dwarvenQuest, factions, cx, cy);
         break;
     }
 
@@ -387,7 +388,7 @@ export class Menu {
     });
   }
 
-  private renderQuests(r: Renderer, mainQuest: MainQuest, factions: Factions, x: number, y: number): void {
+  private renderQuests(r: Renderer, mainQuest: MainQuest, dwarvenQuest: DwarvenQuest, factions: Factions, x: number, y: number): void {
     r.text("Journal — your active quests", x, y, "#cfe3ff", "13px monospace");
     let ry = y + 36;
 
@@ -400,7 +401,14 @@ export class Menu {
           ? "Not started — seek the Courier in Greenreach Vale."
           : mainQuest.objective;
     r.text(mqText, x, ry + 17, "#e8edf4", "12px monospace");
-    ry += 50;
+    ry += 46;
+
+    // Dwarven side quest (only once begun).
+    if (dwarvenQuest.stage !== "notStarted") {
+      r.text("⚙ Echoes of the Deep (Calcelmo)", x, ry, "#cda94e", "bold 14px monospace");
+      r.text(dwarvenQuest.stage === "complete" ? "Completed — Nchuand-Zel is silenced." : dwarvenQuest.objective, x, ry + 17, "#e8edf4", "12px monospace");
+      ry += 46;
+    }
 
     // Active faction quests (joined, not yet complete).
     const active = FACTION_IDS.filter((id) => factions.isJoined(id) && !factions.isPromoted(id));

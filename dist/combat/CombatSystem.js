@@ -18,11 +18,13 @@ export class CombatSystem {
         this.damageNumbers = new DamageNumbers();
         this.hits = [];
         this.projectiles = [];
+        this.enemyProjectiles = [];
     }
     setEnemies(enemies) {
         this.enemies = enemies;
         this.hits = [];
         this.projectiles = [];
+        this.enemyProjectiles = [];
     }
     /** Spawn a melee swing hitbox in front of the player. */
     meleeAttack(player, character, equipment, sneaking) {
@@ -149,7 +151,7 @@ export class CombatSystem {
         const { map, character } = ctx;
         this.updateMeleeHits(dt, ctx);
         this.updateProjectiles(dt, ctx);
-        // Enemies: AI + contact damage + ranged attack zones (dragon fire breath).
+        // Enemies: AI + contact damage + ranged attack zones (dragon fire breath) + bolts.
         const pb = ctx.player.body;
         for (const e of this.enemies) {
             e.update(dt, map, pb.centerX, pb.centerY);
@@ -163,7 +165,12 @@ export class CombatSystem {
                 ctx.onPlayerDamaged(e.breathDamage, knockDir);
                 e.attackCooldown = 0.8;
             }
+            const ra = e.consumeRangedAttack();
+            if (ra) {
+                this.enemyProjectiles.push({ x: e.body.centerX, y: e.body.centerY - 4, vx: ra.vx, vy: ra.vy, life: 2.5, damage: ra.damage, skill: "destruction", color: ra.color });
+            }
         }
+        this.updateEnemyProjectiles(dt, ctx);
         // Remove the dead, granting loot.
         const survivors = [];
         for (const e of this.enemies) {
@@ -231,6 +238,27 @@ export class CombatSystem {
         }
         this.projectiles = alive;
     }
+    /** Move enemy bolts; damage the player on contact, despawn on walls/timeout. */
+    updateEnemyProjectiles(dt, ctx) {
+        const { map } = ctx;
+        const pb = ctx.player.body;
+        const alive = [];
+        for (const p of this.enemyProjectiles) {
+            p.life -= dt;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            if (p.life <= 0)
+                continue;
+            if (map.tileAt(map.colAt(p.x), map.rowAt(p.y)) === TileType.Solid)
+                continue;
+            if (intersects({ x: p.x - 5, y: p.y - 5, w: 10, h: 10 }, pb.rect)) {
+                ctx.onPlayerDamaged(p.damage, Math.sign(p.vx) || 1);
+                continue;
+            }
+            alive.push(p);
+        }
+        this.enemyProjectiles = alive;
+    }
     nearestEnemy(x, y, maxDist) {
         let best = null;
         let bestD = maxDist;
@@ -248,6 +276,8 @@ export class CombatSystem {
             e.render(r, cam, time);
         r.withWorld(cam, (ctx) => {
             for (const p of this.projectiles)
+                drawProjectile(ctx, p, time);
+            for (const p of this.enemyProjectiles)
                 drawProjectile(ctx, p, time);
         });
         this.damageNumbers.render(r, cam);

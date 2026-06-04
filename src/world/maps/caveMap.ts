@@ -47,7 +47,12 @@ export function createCaveMap(): GameMap {
     theme: "cave",
     tilemap,
     spawn: entrance,
-    spawnPoints: { default: entrance, fromOverworld: entrance },
+    spawnPoints: {
+      default: entrance,
+      fromOverworld: entrance,
+      // Climbing back up from the Dwarven ruins.
+      fromDwarven: { x: 22 * TILE_SIZE, y: 15 * TILE_SIZE - PLAYER_H - 1 },
+    },
     bgColor: "#0e0c14",
     enemySpawns: [
       { x: 14 * TILE_SIZE, y: 15 * TILE_SIZE - 40, kind: "Draugr", health: 60, damage: 12, lootLevel: 2 },
@@ -61,6 +66,14 @@ export function createCaveMap(): GameMap {
         toMapId: "overworld",
         toSpawn: "fromCave",
         label: "Exit",
+      },
+      // A sealed Dwemer gate, deeper down.
+      {
+        rect: { x: 24 * TILE_SIZE, y: 13 * TILE_SIZE, w: 2 * TILE_SIZE, h: 2 * TILE_SIZE },
+        toMapId: "dwarven",
+        toSpawn: "fromCave",
+        label: "Nchuand-Zel ↓",
+        kind: "portal",
       },
     ],
   };

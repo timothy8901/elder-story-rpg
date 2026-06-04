@@ -16,7 +16,7 @@ export interface NpcSpawn {
 }
 
 /** Visual theme that drives background and tile rendering. */
-export type MapTheme = "field" | "cave";
+export type MapTheme = "field" | "cave" | "dwarven";
 
 /** Where an enemy starts on a map. */
 export interface EnemySpawn {

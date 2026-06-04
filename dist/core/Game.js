@@ -3,6 +3,7 @@ import { CombatSystem } from "../combat/CombatSystem.js";
 import { SPELLS } from "../combat/spells.js";
 import { SHOUTS, SHOUT_ORDER } from "../combat/shouts.js";
 import { Dragon } from "../entities/Dragon.js";
+import { DwarfMage } from "../entities/DwarfMage.js";
 import { Enemy } from "../entities/Enemy.js";
 import { NPC } from "../entities/NPC.js";
 import { Player } from "../entities/Player.js";
@@ -21,6 +22,7 @@ import { Factions } from "../world/Factions.js";
 import { FACTION_DATA } from "../world/factionData.js";
 import { QuestLog } from "../world/Quests.js";
 import { MainQuest } from "../story/MainQuest.js";
+import { DwarvenQuest } from "../story/DwarvenQuest.js";
 import { createMap, FIRST_MAP_ID } from "../world/maps/index.js";
 import { drawBackground } from "../rendering/Background.js";
 import { drawTilemap } from "../rendering/Tiles.js";
@@ -47,6 +49,7 @@ export class Game {
         this.quests = new QuestLog();
         this.factions = new Factions();
         this.mainQuest = new MainQuest();
+        this.dwarvenQuest = new DwarvenQuest();
         this.dialogue = new Dialogue();
         this.shop = new Shop();
         this.npcs = [];
@@ -99,11 +102,23 @@ export class Game {
         this.inventory.gold = 25;
         this.mapId = FIRST_MAP_ID;
     }
+    /** Build the right enemy subclass for a spawn (Dwarven kinds → DwarfMage). */
+    makeEnemy(s) {
+        const kind = s.kind ?? "Draugr";
+        if (kind.startsWith("Dwarven")) {
+            return new DwarfMage(s.x, s.y, { health: s.health ?? 80, damage: s.damage ?? 13, kind, lootLevel: s.lootLevel ?? 2, boss: kind === "Dwarven Warlord" });
+        }
+        return new Enemy(s.x, s.y, { health: s.health, damage: s.damage, kind, lootLevel: s.lootLevel });
+    }
     populateEnemies() {
-        const enemies = this.map.enemySpawns.map((s) => new Enemy(s.x, s.y, { health: s.health, damage: s.damage, kind: s.kind, lootLevel: s.lootLevel }));
+        const enemies = this.map.enemySpawns.map((s) => this.makeEnemy(s));
         // The main story injects dragons into certain maps at certain stages.
         for (const d of this.mainQuest.extraSpawns(this.mapId)) {
             enemies.push(new Dragon(d.x, d.y, { health: d.health, damage: d.damage, kind: d.kind, named: d.named, requiresDragonrend: d.requiresDragonrend }));
+        }
+        // The Dwarven quest injects the Warlord into Nchuand-Zel while active.
+        for (const d of this.dwarvenQuest.extraSpawns(this.mapId)) {
+            enemies.push(new DwarfMage(d.x, d.y, { health: d.health, damage: d.damage, kind: d.kind, lootLevel: d.lootLevel, boss: d.boss }));
         }
         this.combat.setEnemies(enemies);
     }
@@ -427,7 +442,60 @@ export class Game {
             }
             return { speaker: "Arngeir", text: "Seek your destiny below before you climb to us, Dragonborn.", options: [leave] };
         }
+        if (npc.story === "calcelmo") {
+            const dq = this.dwarvenQuest;
+            if (dq.stage === "notStarted") {
+                return {
+                    speaker: "Calcelmo",
+                    text: "You have the look of someone who can handle trouble. And I have a great deal of trouble.",
+                    options: [
+                        {
+                            label: "What troubles you?",
+                            run: () => {
+                                const lines = dq.startFromCalcelmo();
+                                this.hud.pushToast("Quest: Echoes of the Deep", "#caa24a");
+                                this.autosave();
+                                return this.narration("Calcelmo", lines);
+                            },
+                        },
+                        { label: "Not now.", run: () => null },
+                    ],
+                };
+            }
+            if (dq.stage === "returnToCalcelmo") {
+                return {
+                    speaker: "Calcelmo",
+                    text: "By the gears — you actually did it. The Warlord is destroyed?",
+                    options: [
+                        {
+                            label: "It is. Here is what I recovered.",
+                            run: () => {
+                                this.grantDwarvenReward();
+                                return { speaker: "Calcelmo", text: "Astonishing craftsmanship. Take this Dwarven panoply as payment — and Spellbreaker, an heirloom ward. You have earned them.", options: [leave] };
+                            },
+                        },
+                    ],
+                };
+            }
+            if (dq.stage === "investigate") {
+                return { speaker: "Calcelmo", text: "The ruin lies below Hollowdeep Cave — seek the Dwemer gate. Mind their fire, and their wards.", options: [leave] };
+            }
+            return { speaker: "Calcelmo", text: "Nchuand-Zel sleeps again, thanks to you. Sky guard you, friend.", options: [leave] };
+        }
         return { speaker: npc.name, text: "…", options: [leave] };
+    }
+    grantDwarvenReward() {
+        this.dwarvenQuest.setStage("complete");
+        for (const baseId of ["dwarven_warhammer", "dwarven_helmet", "dwarven_armor", "spellbreaker"]) {
+            const item = makeItem(baseId);
+            if (item.slot && !this.equipment.slots[item.slot])
+                this.equipment.equip(item);
+            else
+                this.inventory.add(item);
+            this.hud.pushToast(`Received ${itemDisplayName(item)}.`, "#caa24a");
+        }
+        this.recomputeStats();
+        this.autosave();
     }
     /** Turn an array of lines into a chain of dialogue nodes ("Continue"). */
     narration(speaker, lines) {
@@ -552,6 +620,14 @@ export class Game {
             this.ensureSelectedShout();
             this.autosave();
         }
+        // Slaying the Dwarven Warlord advances the Dwarven quest.
+        if (enemy.kind === "Dwarven Warlord") {
+            const msgs = this.dwarvenQuest.onWarlordSlain();
+            for (const m of msgs)
+                this.hud.pushToast(m, "#caa24a");
+            if (msgs.length)
+                this.autosave();
+        }
     }
     respawn() {
         this.character.hp = this.character.maxHealth;
@@ -621,6 +697,7 @@ export class Game {
             quests: this.quests.toJSON(),
             factions: this.factions.toJSON(),
             mainQuest: this.mainQuest.toJSON(),
+            dwarvenQuest: this.dwarvenQuest.toJSON(),
         };
     }
     applyState(save) {
@@ -634,6 +711,8 @@ export class Game {
             this.factions.load(save.factions);
         if (save.mainQuest)
             this.mainQuest.load(save.mainQuest);
+        if (save.dwarvenQuest)
+            this.dwarvenQuest.load(save.dwarvenQuest);
         this.ensureSelectedShout();
     }
     autosave() {
@@ -662,13 +741,18 @@ export class Game {
             }
         });
         if (this.menu.open) {
-            this.menu.render(r, this.character, this.inventory, this.equipment, this.factions, this.mainQuest);
+            this.menu.render(r, this.character, this.inventory, this.equipment, this.factions, this.mainQuest, this.dwarvenQuest);
         }
         else {
             this.hud.render(r, this.character, this.equipment, SPELLS[this.selectedSpell].name, this.inventory.gold);
-            // Objective: the main story takes precedence over faction/slay quests.
-            const objective = this.mainQuest.active ? `◆ ${this.mainQuest.objective}` : this.quests.activeQuestStatus();
-            r.text(objective, r.width - 16, r.height - 16, this.mainQuest.active ? "#ffd45e" : "#b6c0d4", "12px monospace", "right");
+            // Objective: main story > Dwarven side quest > faction/slay quests.
+            const objective = this.mainQuest.active
+                ? `◆ ${this.mainQuest.objective}`
+                : this.dwarvenQuest.active
+                    ? `◆ ${this.dwarvenQuest.objective}`
+                    : this.quests.activeQuestStatus();
+            const questActive = this.mainQuest.active || this.dwarvenQuest.active;
+            r.text(objective, r.width - 16, r.height - 16, questActive ? "#ffd45e" : "#b6c0d4", "12px monospace", "right");
             // Current area name, top-center.
             r.fillRectScreen(r.width / 2 - 92, 10, 184, 24, "rgba(0,0,0,0.4)");
             r.text(this.map.name, r.width / 2, 27, "#ffffff", "bold 14px monospace", "center");
@@ -716,6 +800,15 @@ export class Game {
             return st === "notStarted" ? "?" : "";
         if (npc.story === "arngeir")
             return st === "wayOfVoice" || st === "alduinsBane" ? "?" : "";
+        // Side-quest characters.
+        if (npc.story === "calcelmo") {
+            const dq = this.dwarvenQuest.stage;
+            if (dq === "notStarted")
+                return "?";
+            if (dq === "returnToCalcelmo")
+                return "!";
+            return "";
+        }
         return "";
     }
     /** True if slaying this enemy advances a specific active quest objective. */
@@ -733,6 +826,9 @@ export class Game {
             if (companions.joined && companions.stage === 1)
                 return true;
         }
+        // Dwarven foes while the Dwarven quest is active.
+        if (e.kind.startsWith("Dwarven") && this.dwarvenQuest.active)
+            return true;
         return false;
     }
     renderBeastStatus() {

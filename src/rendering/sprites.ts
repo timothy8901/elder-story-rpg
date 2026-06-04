@@ -1,4 +1,5 @@
 import type { Dragon } from "../entities/Dragon.js";
+import type { DwarfMage } from "../entities/DwarfMage.js";
 import type { Enemy } from "../entities/Enemy.js";
 import type { NPC } from "../entities/NPC.js";
 import type { Player } from "../entities/Player.js";
@@ -497,6 +498,154 @@ export function drawDragon(ctx: CanvasRenderingContext2D, d: Dragon, time: numbe
     ctx.fill();
     if (d.named) {
       ctx.fillStyle = "#eaf6ff";
+      ctx.font = "bold 11px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(d.kind, cx, by - 5);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dwemer battle-mages
+// ---------------------------------------------------------------------------
+
+export function drawDwarf(ctx: CanvasRenderingContext2D, d: DwarfMage, time: number): void {
+  const b = d.body;
+  const x = b.pos.x;
+  const y = b.pos.y;
+  const w = b.w;
+  const h = b.h;
+  const cx = x + w / 2;
+  const feetY = y + h;
+  const dir = b.facing;
+  const bronze = d.boss ? "#cda94e" : "#9c7a3e";
+  const bronzeDk = d.boss ? "#8a6e2c" : "#6e5428";
+  const steel = "#80808e";
+  const beard = d.boss ? "#d8c074" : "#b9a06a";
+
+  ctx.save();
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = OUTLINE;
+
+  shadow(ctx, cx, feetY, w * 0.55);
+
+  // Legs (short, armored).
+  ctx.fillStyle = bronzeDk;
+  for (const lx of [cx - 8, cx + 1]) {
+    rr(ctx, lx, feetY - 12, 8, 12, 3);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // Warhammer (behind the body), raised.
+  ctx.save();
+  ctx.translate(cx - dir * 10, y + h * 0.4);
+  ctx.scale(dir, 1);
+  ctx.strokeStyle = OUTLINE;
+  ctx.fillStyle = "#6b4a2a";
+  rr(ctx, -3, -26, 5, 34, 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = steel;
+  rr(ctx, -10, -34, 18, 14, 3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  // Torso (broad bronze cuirass).
+  ctx.fillStyle = bronze;
+  rr(ctx, cx - w * 0.42, y + h * 0.34, w * 0.84, h * 0.5, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = bronzeDk;
+  ctx.fillRect(cx - w * 0.42, y + h * 0.62, w * 0.84, 4); // belt
+  // Pauldrons.
+  ctx.fillStyle = bronze;
+  for (const sx of [cx - w * 0.42, cx + w * 0.42]) {
+    ctx.beginPath();
+    ctx.arc(sx, y + h * 0.4, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // Head: skin, big beard, steel helm with horns.
+  const headCy = y + h * 0.2;
+  ctx.fillStyle = "#d9b48a";
+  ctx.beginPath();
+  ctx.arc(cx, headCy, 9, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // Beard (trapezoid under the face).
+  ctx.fillStyle = beard;
+  ctx.beginPath();
+  ctx.moveTo(cx - 8, headCy + 2);
+  ctx.lineTo(cx + 8, headCy + 2);
+  ctx.lineTo(cx + 5, y + h * 0.42);
+  ctx.lineTo(cx - 5, y + h * 0.42);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  // Helm.
+  ctx.fillStyle = steel;
+  ctx.beginPath();
+  ctx.arc(cx, headCy - 1, 9.5, Math.PI, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = steel;
+  ctx.fillRect(cx - 9, headCy - 2, 18, 3); // brow band
+  // Horns.
+  ctx.fillStyle = d.boss ? "#e8d27a" : "#5a5560";
+  for (const s of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + s * 8, headCy - 3);
+    ctx.lineTo(cx + s * 13, headCy - 11);
+    ctx.lineTo(cx + s * 6, headCy - 5);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Glowing eyes.
+  ctx.fillStyle = d.boss ? "#ff6b6b" : "#ffd24a";
+  ctx.fillRect(cx + dir * 2 - 4, headCy, 3, 2);
+  ctx.fillRect(cx + dir * 2 + 1, headCy, 3, 2);
+
+  // Defensive ward bubble.
+  if (d.shielded) {
+    ctx.strokeStyle = "rgba(120,200,255,0.85)";
+    ctx.fillStyle = `rgba(120,200,255,${0.12 + 0.06 * Math.sin(time * 8)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, y + h * 0.45, w * 0.75, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // Hurt flash.
+  if (d.hurtTimer > 0) {
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = "#ffffff";
+    rr(ctx, x, y, w, h, 6);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+
+  // Health bar (+ name for the Warlord).
+  if (d.health < d.maxHealth) {
+    const frac = Math.max(0, d.health / d.maxHealth);
+    const bw = w + 4;
+    const bx = cx - bw / 2;
+    const by = y - (d.boss ? 14 : 10);
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    rr(ctx, bx - 1, by - 1, bw + 2, 6, 3);
+    ctx.fill();
+    ctx.fillStyle = frac > 0.4 ? "#cda94e" : "#e0584a";
+    rr(ctx, bx, by, bw * frac, 4, 2);
+    ctx.fill();
+    if (d.boss) {
+      ctx.fillStyle = "#e8d27a";
       ctx.font = "bold 11px monospace";
       ctx.textAlign = "center";
       ctx.fillText(d.kind, cx, by - 5);

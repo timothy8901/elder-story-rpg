@@ -71,6 +71,11 @@ const BASES: BaseTemplate[] = [
   // Bards College
   { baseId: "lute", name: "Fine Lute", type: ItemType.Weapon, slot: EquipSlot.MainHand, weaponClass: "oneHanded", damage: 4, weight: 3, value: 90 },
   { baseId: "amulet_of_tales", name: "Amulet of Tales", type: ItemType.Jewelry, slot: EquipSlot.Necklace, weight: 0.5, value: 200, enchantments: [{ stat: "magicka", magnitude: 35 }, { stat: "magickaRegen", magnitude: 3 }] },
+  // Dwarven set (quest reward)
+  { baseId: "dwarven_warhammer", name: "Dwarven Warhammer", type: ItemType.Weapon, slot: EquipSlot.MainHand, weaponClass: "twoHanded", damage: 22, weight: 25, value: 330 },
+  { baseId: "dwarven_helmet", name: "Dwarven Helmet", type: ItemType.Armor, slot: EquipSlot.Head, armorType: "heavy", armor: 24, weight: 8, value: 140 },
+  { baseId: "dwarven_armor", name: "Dwarven Armor", type: ItemType.Armor, slot: EquipSlot.Chest, armorType: "heavy", armor: 44, weight: 38, value: 320 },
+  { baseId: "spellbreaker", name: "Spellbreaker", type: ItemType.Armor, slot: EquipSlot.Shield, armorType: "heavy", armor: 34, weight: 14, value: 480, enchantments: [{ stat: "magicka", magnitude: 50 }, { stat: "armorRating", magnitude: 10 }] },
 ];
 
 /** Base ids that are quest rewards, excluded from the random loot pool. */
@@ -89,6 +94,10 @@ const REWARD_ONLY = new Set([
   "blades_armor",
   "lute",
   "amulet_of_tales",
+  "dwarven_warhammer",
+  "dwarven_helmet",
+  "dwarven_armor",
+  "spellbreaker",
 ]);
 
 interface Affix {
