@@ -190,6 +190,93 @@ def draw_wolf(p):
     return img
 
 
+def draw_werewolf(p):
+    """A hunched bipedal beast (also the player's Beast Form)."""
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    c, c2, eye = p["body"], p["accent"], p["eyes"]
+    d.ellipse([4, 24, 14, 25], fill="#00000040")
+    d.rectangle([6, 20, 8, 25], fill=c2)            # legs
+    d.rectangle([10, 20, 12, 25], fill=c2)
+    d.ellipse([4, 11, 14, 21], fill=c)              # hunched torso
+    d.ellipse([5, 15, 12, 21], fill=c2)             # belly
+    d.rectangle([2, 12, 4, 19], fill=c)             # arms
+    d.rectangle([14, 12, 16, 19], fill=c)
+    for hx in (2, 15):                              # claws
+        fillp(d, [(hx, 19), (hx + 1, 22), (hx + 2, 19)], "#e8e4d8")
+    d.ellipse([8, 3, 17, 12], fill=c)               # wolf head
+    fillp(d, [(16, 7), (18, 8), (16, 10)], c)       # snout
+    d.point((17, 9), fill="#1a1a1a")
+    fillp(d, [(9, 4), (8, 0), (11, 4)], c)          # ears
+    fillp(d, [(14, 4), (16, 0), (15, 4)], c)
+    d.point((12, 7), fill=eye)
+    d.point((15, 7), fill=eye)
+    return img
+
+
+def draw_skeleton(p):
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    c, c2 = p["body"], p["accent"]
+    d.ellipse([4, 24, 13, 25], fill="#00000040")
+    d.rectangle([7, 21, 8, 25], fill=c)             # legs
+    d.rectangle([10, 21, 11, 25], fill=c)
+    d.rectangle([6, 13, 12, 21], fill=c)            # ribcage
+    for ry in (15, 17, 19):
+        d.line([7, ry, 11, ry], fill=c2)            # ribs
+    d.line([9, 13, 9, 20], fill=c2)                 # spine
+    d.rectangle([4, 13, 5, 19], fill=c)             # arms
+    d.rectangle([13, 13, 14, 19], fill=c)
+    d.ellipse([4, 3, 14, 13], fill=c)               # skull
+    d.rectangle([6, 7, 8, 9], fill="#141414")       # eye sockets
+    d.rectangle([10, 7, 12, 9], fill="#141414")
+    d.point((9, 10), fill="#141414")                # nasal
+    d.line([7, 12, 11, 12], fill=c2)                # teeth
+    if p["weapon"] == "sword":
+        d.rectangle([15, 9, 16, 20], fill="#cdd3dc")
+        d.rectangle([14, 13, 17, 14], fill="#6b4a2a")
+    return img
+
+
+def draw_spider(p):
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    c, c2, eye = p["body"], p["accent"], p["eyes"]
+    d.ellipse([3, 23, 15, 25], fill="#00000040")
+    for k, ly in enumerate((12, 15, 18, 21)):       # 8 splayed legs
+        d.line([7, 16, 0, ly], fill=c2)
+        d.line([11, 16, 18, ly], fill=c2)
+    d.ellipse([4, 13, 14, 23], fill=c)              # abdomen
+    d.ellipse([6, 10, 12, 16], fill=c2)             # cephalothorax
+    for ex, ey in ((7, 12), (10, 12), (8, 13), (9, 13)):
+        d.point((ex, ey), fill=eye)                 # eye cluster
+    d.point((7, 15), fill="#fff8e0")                # fangs
+    d.point((11, 15), fill="#fff8e0")
+    return img
+
+
+def draw_crab(p):
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    c, c2, eye = p["body"], p["accent"], p["eyes"]
+    d.ellipse([3, 23, 15, 25], fill="#00000040")
+    for lx in (2, 4):                               # legs
+        d.line([6, 21, lx, 24], fill=c2)
+    for lx in (13, 15):
+        d.line([11, 21, lx, 24], fill=c2)
+    d.ellipse([0, 15, 5, 20], fill=c)               # left claw
+    d.ellipse([12, 15, 17, 20], fill=c)             # right claw
+    d.rectangle([4, 17, 6, 18], fill=c2)
+    d.rectangle([11, 17, 13, 18], fill=c2)
+    d.chord([4, 12, 13, 24], 180, 360, fill=c)      # shell dome
+    d.ellipse([4, 18, 13, 23], fill=c2)
+    d.line([7, 14, 7, 10], fill=c2)                 # eye stalks
+    d.line([10, 14, 10, 10], fill=c2)
+    d.point((7, 9), fill=eye)
+    d.point((10, 9), fill=eye)
+    return img
+
+
 def build_sheet(items, title, out_path, cols=8):
     """items: list of (PIL RGBA image at logical WxH, label). Saves a labeled grid PNG."""
     n = len(items)
