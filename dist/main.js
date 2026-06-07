@@ -16,9 +16,13 @@ atlas.load();
 const game = new Game(canvas);
 const loop = new GameLoop((dt) => game.update(dt), () => game.render(loop.fps));
 loop.start();
-// Dev convenience: inspect/tune live state from the browser console,
-// e.g. `game` or `loop.fps`. Harmless in production.
-Object.assign(globalThis, { game, loop });
+// Dev convenience: inspect/tune live state from the browser console, e.g.
+// `game` or `loop.fps`. Exposed ONLY on local dev hosts so the public build
+// doesn't hand players a trivial cheat/debug handle via DevTools.
+const devHost = ["localhost", "127.0.0.1", ""].includes(location.hostname);
+if (devHost) {
+    Object.assign(globalThis, { game, loop });
+}
 document.addEventListener("visibilitychange", () => {
     if (document.hidden)
         loop.stop();

@@ -32,12 +32,15 @@ export class Shop {
   private vendorName = "Merchant";
   private tab: "buy" | "sell" = "buy";
   private cursor = 0;
+  /** Latest trade result, shown inside the panel (toasts are hidden by it). */
+  private feedback = "";
 
   start(vendorName: string): void {
     this.open = true;
     this.vendorName = vendorName;
     this.tab = "buy";
     this.cursor = 0;
+    this.feedback = "";
   }
   close(): void {
     this.open = false;
@@ -65,6 +68,7 @@ export class Shop {
       else this.sell(inventory, msgs);
     }
     this.cursor = Math.max(0, Math.min(this.cursor, Math.max(0, count - 1)));
+    if (msgs.length) this.feedback = msgs[msgs.length - 1]!;
     return msgs;
   }
 
@@ -134,6 +138,9 @@ export class Shop {
       r.text(`${row.price}g`, x + w - 24, ry, priceColor, "13px monospace", "right");
     }
 
+    if (this.feedback) {
+      r.text(this.feedback, x + 24, y + h - 34, "#ffe08a", "bold 13px monospace");
+    }
     r.text("[←→] buy/sell   [↑↓] choose   [Enter] trade   [Esc] leave", W / 2, y + h - 12, "#7e879a", "11px monospace", "center");
   }
 }

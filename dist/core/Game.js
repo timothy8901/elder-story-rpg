@@ -304,11 +304,17 @@ export class Game {
     nearbyNpc() {
         const px = this.player.body.centerX;
         const py = this.player.body.centerY;
+        // Pick the CLOSEST NPC in range so a crowd never leaves the target ambiguous.
+        let best = null;
+        let bestDist = Infinity;
         for (const npc of this.npcs) {
-            if (Math.abs(npc.centerX - px) < 42 && Math.abs(npc.y + npc.h / 2 - py) < 60)
-                return npc;
+            const dx = Math.abs(npc.centerX - px);
+            if (dx < 42 && Math.abs(npc.y + npc.h / 2 - py) < 60 && dx < bestDist) {
+                best = npc;
+                bestDist = dx;
+            }
         }
-        return null;
+        return best;
     }
     talkTo(npc) {
         npc.facing = this.player.body.centerX >= npc.centerX ? 1 : -1;
@@ -649,9 +655,17 @@ export class Game {
             this.hud.pushToast("No healing potions.", "#9aa4b2");
             return;
         }
+        // Don't waste a potion when there's nothing to heal.
+        if (this.character.hp >= this.character.maxHealth) {
+            this.hud.pushToast("Health already full.", "#9aa4b2");
+            return;
+        }
+        const before = this.character.hp;
         this.character.hp = Math.min(this.character.maxHealth, this.character.hp + potion.effect.magnitude);
-        this.combat.damageNumbers.spawn(this.player.body.centerX, this.player.body.pos.y - 10, potion.effect.magnitude, "#7dffa0");
+        const healed = Math.round(this.character.hp - before);
+        this.combat.damageNumbers.spawn(this.player.body.centerX, this.player.body.pos.y - 10, healed, "#7dffa0");
         this.inventory.remove(potion.uid);
+        this.hud.pushToast(`Used ${potion.name} (+${healed} HP).`, "#7dffa0");
     }
     armorSkillInUse() {
         const chest = this.equipment.slots[EquipSlot.Chest];
@@ -761,7 +775,8 @@ export class Game {
             // "Press E" prompt over a nearby NPC.
             const npc = this.nearbyNpc();
             if (npc && !this.dialogue.open) {
-                r.text(`Press E to ${npc.vendor ? "trade" : "talk"}`, npc.centerX - cam.x, npc.y - cam.y - 38, "#ffffff", "bold 11px monospace", "center");
+                const verb = npc.vendor ? "trade with" : "talk to";
+                r.text(`Press E to ${verb} ${npc.name}`, npc.centerX - cam.x, npc.y - cam.y - 38, "#ffffff", "bold 11px monospace", "center");
             }
             // "Press ↑" prompt when standing in a ground portal.
             const exit = this.currentExit();

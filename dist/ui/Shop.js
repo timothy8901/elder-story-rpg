@@ -26,12 +26,15 @@ export class Shop {
         this.vendorName = "Merchant";
         this.tab = "buy";
         this.cursor = 0;
+        /** Latest trade result, shown inside the panel (toasts are hidden by it). */
+        this.feedback = "";
     }
     start(vendorName) {
         this.open = true;
         this.vendorName = vendorName;
         this.tab = "buy";
         this.cursor = 0;
+        this.feedback = "";
     }
     close() {
         this.open = false;
@@ -63,6 +66,8 @@ export class Shop {
                 this.sell(inventory, msgs);
         }
         this.cursor = Math.max(0, Math.min(this.cursor, Math.max(0, count - 1)));
+        if (msgs.length)
+            this.feedback = msgs[msgs.length - 1];
         return msgs;
     }
     buy(inventory, msgs) {
@@ -126,6 +131,9 @@ export class Shop {
             r.text(row.label, x + 24, ry, sel ? "#ffd45e" : "#e8edf4", "13px monospace");
             const priceColor = this.tab === "buy" ? (row.affordable ? "#9affa0" : "#ff8a8a") : "#ffe45e";
             r.text(`${row.price}g`, x + w - 24, ry, priceColor, "13px monospace", "right");
+        }
+        if (this.feedback) {
+            r.text(this.feedback, x + 24, y + h - 34, "#ffe08a", "bold 13px monospace");
         }
         r.text("[←→] buy/sell   [↑↓] choose   [Enter] trade   [Esc] leave", W / 2, y + h - 12, "#7e879a", "11px monospace", "center");
     }

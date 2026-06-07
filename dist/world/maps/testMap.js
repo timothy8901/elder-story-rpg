@@ -47,7 +47,7 @@ export function createTestMap() {
     fillRow(14, 22, 28, TileType.OneWay); // bridge over the pit — drop through to reach the cave below
     fillRow(11, 32, 37, TileType.OneWay);
     const tilemap = new Tilemap(grid);
-    const spawn = { x: 3 * TILE_SIZE, y: 14 * TILE_SIZE - PLAYER_H - 1 };
+    const spawn = { x: 4 * TILE_SIZE, y: 14 * TILE_SIZE - PLAYER_H - 1 };
     return {
         id: "overworld",
         name: "Greenreach Vale",
@@ -64,21 +64,26 @@ export function createTestMap() {
             fromThroat: { x: 37 * TILE_SIZE, y: 14 * TILE_SIZE - PLAYER_H - 1 },
         },
         bgColor: COLORS.sky,
+        // Foes wait past the bridge at the far (east) end so they don't crowd the
+        // recruiters around the spawn.
         enemySpawns: [
-            { x: 31 * TILE_SIZE, y: 14 * TILE_SIZE - 40, kind: "Wolf", health: 35, damage: 8, lootLevel: 1 },
-            { x: 37 * TILE_SIZE, y: 14 * TILE_SIZE - 40, kind: "Bandit", health: 50, damage: 10, lootLevel: 2 },
+            { x: 44 * TILE_SIZE, y: 14 * TILE_SIZE - 40, kind: "Wolf", health: 35, damage: 8, lootLevel: 1 },
+            { x: 47 * TILE_SIZE, y: 14 * TILE_SIZE - 40, kind: "Bandit", health: 50, damage: 10, lootLevel: 2 },
         ],
+        // Spaced ~5 tiles apart so name tags don't overlap; the player spawns at
+        // col 4, clear of every NPC's interaction range.
         npcSpawns: [
-            { faction: "legion", x: 4 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
-            { faction: "stormcloaks", x: 8 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
-            { faction: "companions", x: 12 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
-            { faction: "college", x: 16 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
-            // Main-story quest giver.
-            { story: "courier", name: "Courier", color: "#b9a04a", x: 20 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
-            // General-goods vendor (opens the shop).
+            // General-goods vendor (opens the shop), nearest the spawn.
             { vendor: true, name: "Belethor", color: "#caa15a", x: 2 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
+            { faction: "legion", x: 7 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
+            { faction: "stormcloaks", x: 12 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
+            { faction: "companions", x: 17 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
+            // East of the pit:
+            { faction: "college", x: 30 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
+            // Main-story quest giver.
+            { story: "courier", name: "Courier", color: "#b9a04a", x: 35 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
             // Dwemer scholar — gives the "Echoes of the Deep" quest.
-            { story: "calcelmo", name: "Calcelmo", color: "#6f6bd6", x: 33 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
+            { story: "calcelmo", name: "Calcelmo", color: "#6f6bd6", x: 40 * TILE_SIZE, y: 14 * TILE_SIZE - 42 },
         ],
         exits: [
             // Drop through the bridge into the pit, then press ↑ to descend into the cave.

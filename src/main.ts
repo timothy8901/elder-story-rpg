@@ -23,9 +23,13 @@ const loop = new GameLoop(
 );
 loop.start();
 
-// Dev convenience: inspect/tune live state from the browser console,
-// e.g. `game` or `loop.fps`. Harmless in production.
-Object.assign(globalThis as Record<string, unknown>, { game, loop });
+// Dev convenience: inspect/tune live state from the browser console, e.g.
+// `game` or `loop.fps`. Exposed ONLY on local dev hosts so the public build
+// doesn't hand players a trivial cheat/debug handle via DevTools.
+const devHost = ["localhost", "127.0.0.1", ""].includes(location.hostname);
+if (devHost) {
+  Object.assign(globalThis as Record<string, unknown>, { game, loop });
+}
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) loop.stop();

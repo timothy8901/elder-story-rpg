@@ -4,6 +4,8 @@ import { skillXpToNext } from "../progression/Character.js";
 import { SKILLS, SKILL_IDS } from "../progression/skills.js";
 import { FACTION_DATA, FACTION_IDS } from "../world/factionData.js";
 const PAGES = ["Stats & Skills", "Inventory", "Equipment", "Crafting", "Factions", "Quests"];
+const fail = (msg) => ({ ok: false, msg });
+const done = (msg) => ({ ok: true, msg });
 /**
  * The pause-screen character sheet rendered on the canvas: attributes & skills
  * (with perk and attribute-point spending), inventory (equip/use), the nine
@@ -15,73 +17,101 @@ export class Menu {
         this.open = false;
         this.page = 0;
         this.cursor = [0, 0, 0, 0, 0, 0];
+        /** Latest action result, shown inside the panel so it isn't hidden by it. */
+        this.feedback = null;
         this.crafts = [
             {
                 label: "Forge — Improve Main-Hand weapon (+damage)",
                 skill: "smithing",
-                run: (c, _inv, eq) => {
+                run: (c, inv, eq) => {
                     const w = eq.mainHand;
                     if (!w || w.damage == null)
-                        return "No weapon equipped to improve.";
+                        return fail("No weapon equipped to improve.");
+                    if ((w.tempered ?? 0) >= Menu.TEMPER_CAP)
+                        return fail(`${itemDisplayName(w)} is already fully tempered.`);
+                    const cost = 20 + Math.round(w.damage) * 3;
+                    if (inv.gold < cost)
+                        return fail(`Need ${cost}g of materials to improve ${itemDisplayName(w)}.`);
                     const gain = Math.round(2 * (1 + c.perkBonus("smithing", "potencyMult")) * (1 + c.skills.smithing.level / 200));
+                    inv.gold -= cost;
+                    w.tempered = (w.tempered ?? 0) + 1;
                     w.damage += gain;
                     w.value += gain * 6;
-                    return `Improved ${itemDisplayName(w)} (+${gain} damage).`;
+                    return done(`Improved ${itemDisplayName(w)} (+${gain} damage, -${cost}g).`);
                 },
             },
             {
                 label: "Forge — Improve Chest armor (+armor)",
                 skill: "smithing",
-                run: (c, _inv, eq) => {
+                run: (c, inv, eq) => {
                     const a = eq.slots.Chest;
                     if (!a || a.armor == null)
-                        return "No chest armor equipped to improve.";
+                        return fail("No chest armor equipped to improve.");
+                    if ((a.tempered ?? 0) >= Menu.TEMPER_CAP)
+                        return fail(`${itemDisplayName(a)} is already fully tempered.`);
+                    const cost = 20 + Math.round(a.armor) * 3;
+                    if (inv.gold < cost)
+                        return fail(`Need ${cost}g of materials to improve ${itemDisplayName(a)}.`);
                     const gain = Math.round(3 * (1 + c.perkBonus("smithing", "potencyMult")) * (1 + c.skills.smithing.level / 200));
+                    inv.gold -= cost;
+                    a.tempered = (a.tempered ?? 0) + 1;
                     a.armor += gain;
                     a.value += gain * 5;
-                    return `Improved ${itemDisplayName(a)} (+${gain} armor).`;
+                    return done(`Improved ${itemDisplayName(a)} (+${gain} armor, -${cost}g).`);
                 },
             },
             {
-                label: "Brew — Healing Potion",
+                label: "Brew — Healing Potion (20g ingredients)",
                 skill: "alchemy",
                 run: (c, inv) => {
+                    const cost = 20;
+                    if (inv.gold < cost)
+                        return fail(`Need ${cost}g of ingredients to brew a potion.`);
                     const potion = makeItem("potion_health");
                     const mult = 1 + c.perkBonus("alchemy", "potencyMult");
                     if (potion.effect)
                         potion.effect.magnitude = Math.round(potion.effect.magnitude * mult);
+                    inv.gold -= cost;
                     inv.add(potion);
-                    return `Brewed ${potion.name} (heals ${potion.effect?.magnitude}).`;
+                    return done(`Brewed ${potion.name} (heals ${potion.effect?.magnitude}, -${cost}g).`);
                 },
             },
             {
-                label: "Enchant — Main-Hand: Flames",
+                label: "Enchant — Main-Hand: Flames (60g)",
                 skill: "enchanting",
-                run: (c, _inv, eq) => {
+                run: (c, inv, eq) => {
                     const w = eq.mainHand;
                     if (!w)
-                        return "No weapon equipped to enchant.";
+                        return fail("No weapon equipped to enchant.");
                     if (w.enchantments.some((e) => e.stat === "fireDamage"))
-                        return "Weapon already enchanted with Flames.";
+                        return fail("Weapon already enchanted with Flames.");
+                    const cost = 60;
+                    if (inv.gold < cost)
+                        return fail(`Need ${cost}g of soul-energy to enchant.`);
                     const mag = Math.round(8 * (1 + c.perkBonus("enchanting", "potencyMult")));
+                    inv.gold -= cost;
                     w.enchantments.push({ stat: "fireDamage", magnitude: mag });
                     w.suffix = "of Flames";
-                    return `Enchanted ${itemDisplayName(w)} (+${mag} fire).`;
+                    return done(`Enchanted ${itemDisplayName(w)} (+${mag} fire, -${cost}g).`);
                 },
             },
             {
-                label: "Enchant — Chest: Fortify Health",
+                label: "Enchant — Chest: Fortify Health (60g)",
                 skill: "enchanting",
-                run: (c, _inv, eq) => {
+                run: (c, inv, eq) => {
                     const a = eq.slots.Chest;
                     if (!a)
-                        return "No chest armor equipped to enchant.";
+                        return fail("No chest armor equipped to enchant.");
                     if (a.enchantments.some((e) => e.stat === "health"))
-                        return "Armor already enchanted with Health.";
+                        return fail("Armor already enchanted with Health.");
+                    const cost = 60;
+                    if (inv.gold < cost)
+                        return fail(`Need ${cost}g of soul-energy to enchant.`);
                     const mag = Math.round(20 * (1 + c.perkBonus("enchanting", "potencyMult")));
+                    inv.gold -= cost;
                     a.enchantments.push({ stat: "health", magnitude: mag });
                     a.suffix = "of Health";
-                    return `Enchanted ${itemDisplayName(a)} (+${mag} health).`;
+                    return done(`Enchanted ${itemDisplayName(a)} (+${mag} health, -${cost}g).`);
                 },
             },
         ];
@@ -125,6 +155,15 @@ export class Menu {
             case "Factions":
             case "Quests":
                 break; // read-only summaries
+        }
+        // Surface the latest message inside the panel (toasts are hidden behind it).
+        if (this.feedback) {
+            this.feedback.ttl -= 1;
+            if (this.feedback.ttl <= 0)
+                this.feedback = null;
+        }
+        if (result.messages.length) {
+            this.feedback = { text: result.messages[result.messages.length - 1], ttl: 240 };
         }
         return result;
     }
@@ -202,10 +241,13 @@ export class Menu {
     }
     craft(c, inv, eq, result) {
         const action = this.crafts[this.cursor[3]];
-        const msg = action.run(c, inv, eq);
-        result.messages.push(msg);
-        result.progress.push(...c.gainSkillXp(action.skill, 12));
-        result.equipmentChanged = true;
+        const res = action.run(c, inv, eq);
+        result.messages.push(res.msg);
+        // XP and a save are only earned when the craft actually succeeds.
+        if (res.ok) {
+            result.progress.push(...c.gainSkillXp(action.skill, 12));
+            result.equipmentChanged = true;
+        }
     }
     // --- Rendering ----------------------------------------------------------
     render(r, character, inventory, equipment, factions, mainQuest, dwarvenQuest) {
@@ -245,6 +287,10 @@ export class Menu {
             case "Quests":
                 this.renderQuests(r, mainQuest, dwarvenQuest, factions, cx, cy);
                 break;
+        }
+        if (this.feedback) {
+            r.fillRectScreen(x, y + h - 52, w, 22, "rgba(255,212,94,0.10)");
+            r.text(this.feedback.text, r.width / 2, y + h - 37, "#ffe08a", "bold 13px monospace", "center");
         }
         r.text("[←→] tab   [↑↓] select   [Enter] use/equip/craft   [1/2/3] raise attribute   [I or Esc] close", r.width / 2, y + h - 14, "#7e879a", "12px monospace", "center");
     }
@@ -401,6 +447,9 @@ export class Menu {
         }
     }
 }
+/** Each improvement is capped, and every craft costs gold (and scales), so
+ *  it can't be spammed for free. */
+Menu.TEMPER_CAP = 5;
 /** One-line item stat summary for list views. */
 function describeItem(item) {
     const parts = [];

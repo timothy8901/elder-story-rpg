@@ -79,6 +79,8 @@ export interface Item {
   prefix?: string;
   suffix?: string;
   enchantments: Enchantment[];
+  /** Number of times tempered at the forge (capped, so it can't be spammed). */
+  tempered?: number;
 
   /** Consumables (potions) stack; equipment does not. */
   stackable?: boolean;
