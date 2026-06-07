@@ -48,89 +48,74 @@ export class Menu {
   /** Latest action result, shown inside the panel so it isn't hidden by it. */
   private feedback: { text: string; ttl: number } | null = null;
 
-  /** Each improvement is capped, and every craft costs gold (and scales), so
-   *  it can't be spammed for free. */
+  /** Crafting is free; a single piece can only be tempered so many times so one
+   *  weapon/armor can't be improved into infinity. */
   private static readonly TEMPER_CAP = 5;
 
   private readonly crafts: CraftAction[] = [
     {
       label: "Forge — Improve Main-Hand weapon (+damage)",
       skill: "smithing",
-      run: (c, inv, eq) => {
+      run: (c, _inv, eq) => {
         const w = eq.mainHand;
         if (!w || w.damage == null) return fail("No weapon equipped to improve.");
         if ((w.tempered ?? 0) >= Menu.TEMPER_CAP) return fail(`${itemDisplayName(w)} is already fully tempered.`);
-        const cost = 20 + Math.round(w.damage) * 3;
-        if (inv.gold < cost) return fail(`Need ${cost}g of materials to improve ${itemDisplayName(w)}.`);
         const gain = Math.round(2 * (1 + c.perkBonus("smithing", "potencyMult")) * (1 + c.skills.smithing.level / 200));
-        inv.gold -= cost;
         w.tempered = (w.tempered ?? 0) + 1;
         w.damage += gain;
         w.value += gain * 6;
-        return done(`Improved ${itemDisplayName(w)} (+${gain} damage, -${cost}g).`);
+        return done(`Improved ${itemDisplayName(w)} (+${gain} damage).`);
       },
     },
     {
       label: "Forge — Improve Chest armor (+armor)",
       skill: "smithing",
-      run: (c, inv, eq) => {
+      run: (c, _inv, eq) => {
         const a = eq.slots.Chest;
         if (!a || a.armor == null) return fail("No chest armor equipped to improve.");
         if ((a.tempered ?? 0) >= Menu.TEMPER_CAP) return fail(`${itemDisplayName(a)} is already fully tempered.`);
-        const cost = 20 + Math.round(a.armor) * 3;
-        if (inv.gold < cost) return fail(`Need ${cost}g of materials to improve ${itemDisplayName(a)}.`);
         const gain = Math.round(3 * (1 + c.perkBonus("smithing", "potencyMult")) * (1 + c.skills.smithing.level / 200));
-        inv.gold -= cost;
         a.tempered = (a.tempered ?? 0) + 1;
         a.armor += gain;
         a.value += gain * 5;
-        return done(`Improved ${itemDisplayName(a)} (+${gain} armor, -${cost}g).`);
+        return done(`Improved ${itemDisplayName(a)} (+${gain} armor).`);
       },
     },
     {
-      label: "Brew — Healing Potion (20g ingredients)",
+      label: "Brew — Healing Potion",
       skill: "alchemy",
       run: (c, inv) => {
-        const cost = 20;
-        if (inv.gold < cost) return fail(`Need ${cost}g of ingredients to brew a potion.`);
         const potion = makeItem("potion_health");
         const mult = 1 + c.perkBonus("alchemy", "potencyMult");
         if (potion.effect) potion.effect.magnitude = Math.round(potion.effect.magnitude * mult);
-        inv.gold -= cost;
         inv.add(potion);
-        return done(`Brewed ${potion.name} (heals ${potion.effect?.magnitude}, -${cost}g).`);
+        return done(`Brewed ${potion.name} (heals ${potion.effect?.magnitude}).`);
       },
     },
     {
-      label: "Enchant — Main-Hand: Flames (60g)",
+      label: "Enchant — Main-Hand: Flames",
       skill: "enchanting",
-      run: (c, inv, eq) => {
+      run: (c, _inv, eq) => {
         const w = eq.mainHand;
         if (!w) return fail("No weapon equipped to enchant.");
         if (w.enchantments.some((e) => e.stat === "fireDamage")) return fail("Weapon already enchanted with Flames.");
-        const cost = 60;
-        if (inv.gold < cost) return fail(`Need ${cost}g of soul-energy to enchant.`);
         const mag = Math.round(8 * (1 + c.perkBonus("enchanting", "potencyMult")));
-        inv.gold -= cost;
         w.enchantments.push({ stat: "fireDamage", magnitude: mag });
         w.suffix = "of Flames";
-        return done(`Enchanted ${itemDisplayName(w)} (+${mag} fire, -${cost}g).`);
+        return done(`Enchanted ${itemDisplayName(w)} (+${mag} fire).`);
       },
     },
     {
-      label: "Enchant — Chest: Fortify Health (60g)",
+      label: "Enchant — Chest: Fortify Health",
       skill: "enchanting",
-      run: (c, inv, eq) => {
+      run: (c, _inv, eq) => {
         const a = eq.slots.Chest;
         if (!a) return fail("No chest armor equipped to enchant.");
         if (a.enchantments.some((e) => e.stat === "health")) return fail("Armor already enchanted with Health.");
-        const cost = 60;
-        if (inv.gold < cost) return fail(`Need ${cost}g of soul-energy to enchant.`);
         const mag = Math.round(20 * (1 + c.perkBonus("enchanting", "potencyMult")));
-        inv.gold -= cost;
         a.enchantments.push({ stat: "health", magnitude: mag });
         a.suffix = "of Health";
-        return done(`Enchanted ${itemDisplayName(a)} (+${mag} health, -${cost}g).`);
+        return done(`Enchanted ${itemDisplayName(a)} (+${mag} health).`);
       },
     },
   ];
