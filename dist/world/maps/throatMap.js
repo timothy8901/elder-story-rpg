@@ -1,5 +1,4 @@
 import { COLORS, TILE_SIZE } from "../../config.js";
-import { TileType } from "../../types.js";
 import { MapBuilder, standOn } from "./builder.js";
 const COLS = 22;
 const ROWS = 30;
@@ -14,7 +13,7 @@ export function createThroatMap() {
     b.ground(27); // entrance floor at the mountain's foot
     b.wall(0);
     b.wall(COLS - 1);
-    // Ascending one-way ledges.
+    // Ascending one-way ledges, zig-zagging up to the summit.
     b.platform(24, 3, 8);
     b.platform(21, 12, 18);
     b.platform(18, 4, 10);
@@ -22,8 +21,12 @@ export function createThroatMap() {
     b.platform(12, 4, 10);
     b.platform(9, 11, 17);
     b.platform(6, 5, 12);
-    // The summit terrace (solid).
-    b.rect(5, 4, 17, 5, TileType.Solid);
+    // The summit terrace. It's a wide one-way ledge you hop up onto from the row-6
+    // ledge below (2 tiles up) — the same way every other ledge here works.
+    // (It was previously a thick *solid* slab spanning the full width: the row-6
+    // ledge was buried inside it and there was no open column to jump up beside,
+    // so the terrace — and Arngeir — were impossible to reach.)
+    b.platform(4, 4, 18);
     const entrance = standOn(3, 27);
     return {
         id: "throat",
