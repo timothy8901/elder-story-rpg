@@ -32,6 +32,16 @@ if (devHost) {
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) loop.stop();
-  else loop.start();
+  if (document.hidden) {
+    game.saveNow(); // persist before the tab is backgrounded / the loop stops
+    loop.stop();
+  } else {
+    loop.start();
+  }
 });
+
+// Belt-and-suspenders saves for refresh / close / navigation. localStorage
+// writes are synchronous, so they're safe in these handlers. pagehide is the
+// most reliable across browsers (incl. bfcache/mobile); beforeunload backs it up.
+window.addEventListener("pagehide", () => game.saveNow());
+window.addEventListener("beforeunload", () => game.saveNow());

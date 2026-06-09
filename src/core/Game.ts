@@ -70,6 +70,12 @@ export class Game {
   private sneakXpTimer = 0;
   /** Animation clock (seconds) for backgrounds, sprites, portals. */
   private animTime = 0;
+  // Saving: periodic autosave + a 2-press-confirm New-Game reset.
+  private saveTimer = 0;
+  private resetConfirmTimer = 0;
+  private resetting = false;
+  private static readonly AUTOSAVE_INTERVAL = 10;
+  private static readonly RESET_CONFIRM_WINDOW = 3;
   // Beast Form (Companions unlock).
   private beastTimer = 0;
   private beastCooldown = 0;
@@ -166,6 +172,16 @@ export class Game {
 
   update(dt: number): void {
     this.animTime += dt;
+
+    // Periodic autosave + reset-confirm countdown — run in EVERY state (before
+    // the dialogue/shop/menu early-returns) so progress can't be lost.
+    this.saveTimer += dt;
+    if (this.saveTimer >= Game.AUTOSAVE_INTERVAL) {
+      this.saveTimer = 0;
+      this.autosave();
+    }
+    if (this.resetConfirmTimer > 0) this.resetConfirmTimer = Math.max(0, this.resetConfirmTimer - dt);
+
     if (this.input.justPressed("Backquote")) this.debug = !this.debug;
 
     // A conversation takes over all input while it's open.
@@ -247,6 +263,11 @@ export class Game {
     if (this.input.justPressed("KeyR")) this.tryBeastForm();
     if (this.input.justPressed("KeyV")) this.cycleShout();
     if (this.input.justPressed("KeyZ")) this.useShout();
+    if (this.input.justPressed("KeyP")) {
+      this.saveNow();
+      this.hud.pushToast("Game saved", "#cfe3ff");
+    }
+    if (this.input.justPressed("KeyX")) this.handleResetKey();
     if (this.shoutCooldown > 0) this.shoutCooldown = Math.max(0, this.shoutCooldown - dt);
 
     // Thieves Guild: gold-carrying objective.
@@ -668,6 +689,9 @@ export class Game {
       for (const m of msgs) this.hud.pushToast(m, "#caa24a");
       if (msgs.length) this.autosave();
     }
+
+    // Persist every kill — loot, gold and skill XP — not just milestone events.
+    this.autosave();
   }
 
   private respawn(): void {
@@ -702,6 +726,7 @@ export class Game {
     this.combat.damageNumbers.spawn(this.player.body.centerX, this.player.body.pos.y - 10, healed, "#7dffa0");
     this.inventory.remove(potion.uid);
     this.hud.pushToast(`Used ${potion.name} (+${healed} HP).`, "#7dffa0");
+    this.autosave();
   }
 
   private armorSkillInUse(): "lightArmor" | "heavyArmor" | null {
@@ -767,8 +792,30 @@ export class Game {
     this.ensureSelectedShout();
   }
 
-  private autosave(): void {
-    SaveManager.save(this.buildState());
+  private autosave(): boolean {
+    if (this.resetting) return false; // a reset is in flight — don't re-persist the old game
+    const ok = SaveManager.save(this.buildState());
+    if (ok) this.hud.flashSaved();
+    return ok;
+  }
+
+  /** Public save entry point for the manual-save key and page-lifecycle handlers. */
+  saveNow(): boolean {
+    return this.autosave();
+  }
+
+  /** Reset/New-Game: first press warns, a second press within the window wipes
+   *  the save and reloads into a fresh game (the constructor's no-save path). */
+  private handleResetKey(): void {
+    if (this.resetConfirmTimer > 0) {
+      this.resetting = true; // block periodic/unload saves from rewriting the cleared save
+      this.resetConfirmTimer = 0;
+      SaveManager.clear();
+      location.reload();
+      return;
+    }
+    this.resetConfirmTimer = Game.RESET_CONFIRM_WINDOW;
+    this.hud.pushToast("Press X again to erase your save and start over.", "#ff9d9d");
   }
 
   // --- Render -------------------------------------------------------------

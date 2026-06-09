@@ -17,10 +17,19 @@ interface Toast {
  */
 export class HUD {
   private toasts: Toast[] = [];
+  /** Seconds remaining on the subtle "Saved" indicator (separate from toasts). */
+  private savedFlash = 0;
+  private static readonly SAVED_FLASH_LIFE = 1.0;
+  private static readonly SAVED_FADE = 0.4;
 
   pushToast(text: string, color = "#e8edf4"): void {
     this.toasts.push({ text, color, age: 0, life: 2.4 });
     if (this.toasts.length > 6) this.toasts.shift();
+  }
+
+  /** Ping the subtle corner "Saved" flash (called on every successful save). */
+  flashSaved(): void {
+    this.savedFlash = HUD.SAVED_FLASH_LIFE;
   }
 
   /** Turn progression events into player-facing toasts. */
@@ -34,6 +43,7 @@ export class HUD {
   update(dt: number): void {
     for (const t of this.toasts) t.age += dt;
     this.toasts = this.toasts.filter((t) => t.age < t.life);
+    if (this.savedFlash > 0) this.savedFlash = Math.max(0, this.savedFlash - dt);
   }
 
   render(
@@ -83,5 +93,12 @@ export class HUD {
       r.text(t.text, r.width / 2, 80 + i * 18, t.color, "bold 13px monospace", "center");
       r.ctx.globalAlpha = 1;
     });
+
+    // Subtle "Saved" flash, bottom-right (one line above the quest objective).
+    if (this.savedFlash > 0) {
+      r.ctx.globalAlpha = Math.max(0, Math.min(1, this.savedFlash / HUD.SAVED_FADE));
+      r.text("✓ Saved", r.width - 16, h - 34, "#7dffa0", "bold 12px monospace", "right");
+      r.ctx.globalAlpha = 1;
+    }
   }
 }
