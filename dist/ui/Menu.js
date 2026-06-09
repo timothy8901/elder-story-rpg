@@ -236,7 +236,8 @@ export class Menu {
         const w = r.width - 80;
         const h = r.height - 56;
         r.fillRectScreen(0, 0, r.width, r.height, "rgba(6,8,14,0.78)");
-        r.fillRectScreen(x, y, w, h, "rgba(16,20,30,0.97)");
+        r.fillRoundRect(x, y, w, h, 10, "rgba(16,20,30,0.97)");
+        r.strokeRoundRect(x, y, w, h, 10, "#3a4768", 1);
         // Tabs (spaced to fit the panel width).
         const tabW = (w - 40) / PAGES.length;
         PAGES.forEach((name, i) => {

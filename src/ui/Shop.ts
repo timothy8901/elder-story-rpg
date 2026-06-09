@@ -104,8 +104,9 @@ export class Shop {
     const h = H - 150;
 
     r.fillRectScreen(0, 0, W, H, "rgba(0,0,0,0.55)");
-    r.fillRectScreen(x, y, w, h, "rgba(16,20,30,0.97)");
-    r.fillRectScreen(x, y, w, 2, "#ffd45e");
+    r.fillRoundRect(x, y, w, h, 10, "rgba(16,20,30,0.97)");
+    r.strokeRoundRect(x, y, w, h, 10, "#caa24a", 1);
+    r.fillRectScreen(x + 10, y, w - 20, 2, "#ffd45e");
 
     r.text(`${this.vendorName} — Wares`, x + 18, y + 26, "#ffd45e", "bold 15px monospace");
     r.text(`Gold: ${inventory.gold}`, x + w - 18, y + 26, "#ffe45e", "13px monospace", "right");

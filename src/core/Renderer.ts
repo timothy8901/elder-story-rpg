@@ -149,7 +149,7 @@ export class Renderer {
     ctx.closePath();
   }
 
-  fillRoundRect(x: number, y: number, w: number, h: number, radius: number, color: string): void {
+  fillRoundRect(x: number, y: number, w: number, h: number, radius: number, color: string | CanvasGradient): void {
     this.roundPath(x, y, w, h, radius);
     this.ctx.fillStyle = color;
     this.ctx.fill();

@@ -54,32 +54,50 @@ export class HUD {
     gold: number,
   ): void {
     const h = r.height;
-    const bar = (y: number, label: string, cur: number, max: number, color: string) => {
-      const x = 16;
-      const w = 210;
-      r.fillRectScreen(x, y, w, 16, "rgba(0,0,0,0.5)");
-      r.fillRectScreen(x, y, w * Math.max(0, Math.min(1, cur / max)), 16, color);
-      r.text(`${label} ${Math.round(cur)}/${Math.round(max)}`, x + 6, y + 12, "#ffffff", "11px monospace");
+    const ctx = r.ctx;
+
+    // --- Resource bars (bottom-left), in a framed panel ---
+    const bx = 22, bw = 200, bh = 14, rowGap = 20;
+    const top = h - 76;
+    r.fillRoundRect(8, top - 8, bw + 26, 3 * rowGap + 6, 6, "rgba(10,14,22,0.5)");
+    const bar = (rowI: number, label: string, cur: number, max: number, c1: string, c2: string) => {
+      const y = top + rowI * rowGap;
+      const frac = Math.max(0, Math.min(1, cur / max));
+      r.fillRoundRect(8, y + 2, 9, bh - 4, 2, c1); // icon pip
+      r.fillRoundRect(bx, y, bw, bh, 4, "rgba(6,8,14,0.7)"); // track
+      if (frac > 0) {
+        const g = ctx.createLinearGradient(0, y, 0, y + bh);
+        g.addColorStop(0, c1);
+        g.addColorStop(1, c2);
+        r.fillRoundRect(bx, y, Math.max(4, bw * frac), bh, 4, g); // gradient fill
+      }
+      for (let t = 1; t < 5; t++) r.fillRectScreen(bx + Math.round((bw * t) / 5), y + 2, 1, bh - 4, "rgba(0,0,0,0.28)"); // segment ticks
+      r.strokeRoundRect(bx, y, bw, bh, 4, "rgba(0,0,0,0.5)", 1);
+      r.text(`${label} ${Math.round(cur)}/${Math.round(max)}`, bx + 6, y + bh - 3, "#ffffff", "bold 10px monospace");
     };
-    bar(h - 74, "HP", character.hp, character.maxHealth, "#c0504d");
-    bar(h - 54, "MP", character.mp, character.maxMagicka, "#3b6ea5");
-    bar(h - 34, "SP", character.sp, character.maxStamina, "#3f8f4f");
+    bar(0, "HP", character.hp, character.maxHealth, "#e2554d", "#8f2f2a");
+    bar(1, "MP", character.mp, character.maxMagicka, "#4f8fe0", "#274f8f");
+    bar(2, "SP", character.sp, character.maxStamina, "#54c065", "#2c7a3a");
 
-    // Readied gear + gold (top-left strip).
+    // --- Readied gear + level (top-left), framed ---
     const weapon = equipment.mainHand ? itemDisplayName(equipment.mainHand) : "Unarmed";
-    r.text(`⚔ ${weapon}`, 16, 22, "#e8edf4", "12px monospace");
-    r.text(`✦ ${selectedSpell}`, 16, 40, "#9ad0ff", "12px monospace");
-    r.text(`Lvl ${character.characterLevel}`, 16, 58, "#ffd45e", "12px monospace");
+    r.fillRoundRect(8, 10, 250, 58, 6, "rgba(10,14,22,0.45)");
+    r.text(`⚔ ${weapon}`, 18, 28, "#e8edf4", "12px monospace");
+    r.text(`✦ ${selectedSpell}`, 18, 46, "#9ad0ff", "12px monospace");
+    r.text(`Lvl ${character.characterLevel}`, 18, 62, "#ffd45e", "bold 12px monospace");
 
-    // Gold (top-right).
-    r.text(`◆ ${gold}`, r.width - 16, 22, "#ffd45e", "12px monospace", "right");
+    // Gold (top-right), framed.
+    const goldStr = `◆ ${gold}`;
+    const gw = goldStr.length * 8 + 16;
+    r.fillRoundRect(r.width - 14 - gw, 10, gw, 22, 6, "rgba(10,14,22,0.45)");
+    r.text(goldStr, r.width - 18, 25, "#ffd45e", "bold 12px monospace", "right");
 
-    // Perk/attribute reminders.
+    // Perk/attribute reminder (below the top-center area banner).
     if (character.perkPoints > 0 || character.attributePoints > 0) {
       r.text(
         `Press [I] — ${character.perkPoints} perk · ${character.attributePoints} attribute point(s) to spend`,
         r.width / 2,
-        22,
+        50,
         "#ffd45e",
         "12px monospace",
         "center",
