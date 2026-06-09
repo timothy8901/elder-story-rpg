@@ -6,6 +6,24 @@ import { atlas } from "./Atlas.js";
  * draw in world coordinates and expect a camera-translated context.
  */
 const OUTLINE = "#241c2e";
+/** Horizontal speed (px/s) above which a grounded entity reads as "walking". */
+const WALK_VX = 18;
+function playerState(p) {
+    if (p.hurtTimer > 0)
+        return "hurt";
+    if (p.attackTimer > 0)
+        return "attack";
+    if (p.body.onGround && Math.abs(p.body.vel.x) > WALK_VX)
+        return "walk";
+    return "idle";
+}
+function groundState(e) {
+    if (e.hurtTimer > 0)
+        return "hurt";
+    if (e.body.onGround && Math.abs(e.body.vel.x) > WALK_VX)
+        return "walk";
+    return "idle";
+}
 // ---------------------------------------------------------------------------
 // Player — a chibi adventurer
 // ---------------------------------------------------------------------------
@@ -25,7 +43,8 @@ export function drawPlayer(ctx, p, time) {
         shadow(ctx, cx, feetY, w * 0.5);
         if (p.sneaking)
             ctx.globalAlpha = 0.9;
-        atlas.blitFeet(ctx, pkey, cx, feetY, h * (p.sneaking ? 1.32 : 1.5), dir < 0);
+        const pPhase = p.attackTimer > 0 ? 1 - p.attackTimer / 0.18 : undefined;
+        atlas.drawAnimated(ctx, pkey, playerState(p), cx, feetY, h * (p.sneaking ? 1.32 : 1.5), dir < 0, time, pPhase);
         ctx.globalAlpha = 1;
         if (p.attackTimer > 0)
             slashFx(ctx, cx, y + h * 0.45, dir, 1 - p.attackTimer / 0.18);
@@ -257,7 +276,7 @@ export function drawEnemy(ctx, e, time) {
     if (atlas.has(ekey)) {
         ctx.save();
         shadow(ctx, cx, feetY, w * 0.5);
-        atlas.blitFeet(ctx, ekey, cx, feetY, h * enemyScale(ekey), dir < 0);
+        atlas.drawAnimated(ctx, ekey, groundState(e), cx, feetY, h * enemyScale(ekey), dir < 0, time);
         if (e.hurtTimer > 0) {
             ctx.globalAlpha = 0.5;
             ctx.fillStyle = "#ffffff";
@@ -537,7 +556,7 @@ export function drawDwarf(ctx, d, time) {
     if (atlas.has(dkey)) {
         ctx.save();
         shadow(ctx, cx, feetY, w * 0.55);
-        atlas.blitFeet(ctx, dkey, cx, feetY, h * 1.55, dir < 0);
+        atlas.drawAnimated(ctx, dkey, groundState(d), cx, feetY, h * 1.55, dir < 0, time);
         if (d.shielded) {
             ctx.strokeStyle = "rgba(120,200,255,0.85)";
             ctx.fillStyle = `rgba(120,200,255,${0.12 + 0.06 * Math.sin(time * 8)})`;
@@ -692,7 +711,7 @@ export function drawNpc(ctx, npc, marker, time) {
     if (atlas.has(nkey)) {
         ctx.save();
         shadow(ctx, cx, feetY, w * 0.5);
-        atlas.blitFeet(ctx, nkey, cx, feetY, h * 1.5, facing < 0);
+        atlas.drawAnimated(ctx, nkey, "idle", cx, feetY, h * 1.5, facing < 0, time);
         ctx.restore();
         drawNpcTag(ctx, npc, marker, time, cx, y);
         return;

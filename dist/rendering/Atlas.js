@@ -3,34 +3,37 @@
  * tools/gen_atlas.py -> assets/atlas.png). Loaded async at startup; until it's
  * ready, callers fall back to the procedural drawing in sprites.ts.
  *
- * The index below is emitted verbatim by gen_atlas.py — re-run that script and
- * paste its output here if the sprite set changes.
+ * The atlas is laid out one entity per ROW, with animation frames packed
+ * left-to-right per state (idle / walk / attack). The SPRITES index below is
+ * emitted verbatim by gen_atlas.py — re-run that script and paste its output
+ * here if the sprite set changes.
  */
+import { ASSET_VERSION } from "../config.js";
 const W = 18, H = 26; // logical cell size (matches sprite_lib)
-const PX = 3; // upscale factor baked into atlas.png (see tools/gen_atlas.py)
+const PX = 3; // upscale factor baked into atlas.png
 const SRC_W = W * PX, SRC_H = H * PX; // 54 x 78 px per cell in the PNG
 const ASPECT = W / H;
 const SPRITES = {
-    hero: [0, 0],
-    werewolf: [1, 0],
-    wolf: [2, 0],
-    bandit: [3, 0],
-    draugr: [4, 0],
-    draugr_overlord: [5, 0],
-    dwarven_battlemage: [6, 0],
-    dwarven_warlord: [7, 0],
-    npc_legion: [0, 1],
-    npc_stormcloaks: [1, 1],
-    npc_companions: [2, 1],
-    npc_college: [3, 1],
-    npc_thievesGuild: [4, 1],
-    npc_darkBrotherhood: [5, 1],
-    npc_blades: [6, 1],
-    npc_bards: [7, 1],
-    npc_courier: [0, 2],
-    npc_arngeir: [1, 2],
-    npc_calcelmo: [2, 2],
-    npc_merchant: [3, 2],
+    hero: { row: 0, states: { idle: { col: 0, n: 2, fps: 3 }, walk: { col: 2, n: 4, fps: 9 }, attack: { col: 6, n: 3, fps: 18 } } },
+    werewolf: { row: 1, states: { idle: { col: 0, n: 2, fps: 3 }, walk: { col: 2, n: 4, fps: 9 }, attack: { col: 6, n: 3, fps: 18 } } },
+    wolf: { row: 2, states: { idle: { col: 0, n: 2, fps: 3 }, walk: { col: 2, n: 4, fps: 9 }, attack: { col: 6, n: 3, fps: 18 } } },
+    bandit: { row: 3, states: { idle: { col: 0, n: 2, fps: 3 }, walk: { col: 2, n: 4, fps: 9 }, attack: { col: 6, n: 3, fps: 18 } } },
+    draugr: { row: 4, states: { idle: { col: 0, n: 2, fps: 3 }, walk: { col: 2, n: 4, fps: 9 }, attack: { col: 6, n: 3, fps: 18 } } },
+    draugr_overlord: { row: 5, states: { idle: { col: 0, n: 2, fps: 3 }, walk: { col: 2, n: 4, fps: 9 }, attack: { col: 6, n: 3, fps: 18 } } },
+    dwarven_battlemage: { row: 6, states: { idle: { col: 0, n: 2, fps: 3 }, walk: { col: 2, n: 4, fps: 9 }, attack: { col: 6, n: 3, fps: 18 } } },
+    dwarven_warlord: { row: 7, states: { idle: { col: 0, n: 2, fps: 3 }, walk: { col: 2, n: 4, fps: 9 }, attack: { col: 6, n: 3, fps: 18 } } },
+    npc_legion: { row: 8, states: { idle: { col: 0, n: 2, fps: 2 } } },
+    npc_stormcloaks: { row: 9, states: { idle: { col: 0, n: 2, fps: 2 } } },
+    npc_companions: { row: 10, states: { idle: { col: 0, n: 2, fps: 2 } } },
+    npc_college: { row: 11, states: { idle: { col: 0, n: 2, fps: 2 } } },
+    npc_thievesGuild: { row: 12, states: { idle: { col: 0, n: 2, fps: 2 } } },
+    npc_darkBrotherhood: { row: 13, states: { idle: { col: 0, n: 2, fps: 2 } } },
+    npc_blades: { row: 14, states: { idle: { col: 0, n: 2, fps: 2 } } },
+    npc_bards: { row: 15, states: { idle: { col: 0, n: 2, fps: 2 } } },
+    npc_courier: { row: 16, states: { idle: { col: 0, n: 2, fps: 2 } } },
+    npc_arngeir: { row: 17, states: { idle: { col: 0, n: 2, fps: 2 } } },
+    npc_calcelmo: { row: 18, states: { idle: { col: 0, n: 2, fps: 2 } } },
+    npc_merchant: { row: 19, states: { idle: { col: 0, n: 2, fps: 2 } } },
 };
 class SpriteAtlas {
     constructor() {
@@ -47,27 +50,35 @@ class SpriteAtlas {
         this.img.onerror = () => {
             console.warn(`[Atlas] failed to load ${src}; using procedural sprites.`);
         };
-        this.img.src = src;
+        this.img.src = `${src}?v=${ASSET_VERSION}`;
     }
     /** True only once the PNG is decoded and the sprite exists. */
     has(name) {
         return this.ready && name in SPRITES;
     }
     /**
-     * Draw sprite `name` at on-screen height `sh` (width derives from the cell
-     * aspect), centered horizontally on `cx` with its feet at `feetY`. Mirrors
-     * horizontally when `flip` (i.e. the entity faces left). Returns false if the
-     * atlas isn't ready / the name is unknown so the caller can fall back.
+     * Draw an animated sprite, feet-anchored. `state` picks the frame block
+     * (falling back to idle); the frame cycles on `animTime` at the state's fps,
+     * except an `attack` with an explicit `phase` (0..1) maps straight to the
+     * swing's progress so it can't desync from the hitbox. Mirrors when `flip`.
+     * Returns false (so the caller can fall back) if the atlas isn't ready / the
+     * sprite is unknown.
      */
-    blitFeet(ctx, name, cx, feetY, sh, flip) {
-        const cell = SPRITES[name];
-        if (!this.ready || !cell)
+    drawAnimated(ctx, name, state, cx, feetY, sh, flip, animTime, phase) {
+        const def = SPRITES[name];
+        if (!this.ready || !def)
             return false;
+        const st = def.states[state] ?? def.states.idle ?? Object.values(def.states)[0];
+        if (!st)
+            return false;
+        const frame = state === "attack" && phase != null
+            ? Math.min(st.n - 1, Math.max(0, Math.floor(phase * st.n)))
+            : Math.floor(animTime * st.fps) % st.n;
+        const sx = (st.col + frame) * SRC_W;
+        const sy = def.row * SRC_H;
         const sw = sh * ASPECT;
         const dx = cx - sw / 2;
         const dy = feetY - sh;
-        const sx = cell[0] * SRC_W;
-        const sy = cell[1] * SRC_H;
         const prevSmooth = ctx.imageSmoothingEnabled;
         ctx.imageSmoothingEnabled = false;
         if (flip) {
@@ -82,6 +93,10 @@ class SpriteAtlas {
         }
         ctx.imageSmoothingEnabled = prevSmooth;
         return true;
+    }
+    /** Back-compat: draw the static idle frame (used by overlays / simple callers). */
+    blitFeet(ctx, name, cx, feetY, sh, flip) {
+        return this.drawAnimated(ctx, name, "idle", cx, feetY, sh, flip, 0);
     }
 }
 export const atlas = new SpriteAtlas();

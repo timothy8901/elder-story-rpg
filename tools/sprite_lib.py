@@ -48,16 +48,38 @@ def fillp(d, poly, c):
     d.polygon(poly, fill=c)
 
 
-def draw_char(p):
+def _char_pose(pose, frame):
+    """Per-frame pixel offsets for the humanoid: whole-figure bob, each leg
+    (dx,dy), arm-swing (aw: right +, left -), and weapon (wpx,wpy)."""
+    if pose == "walk":
+        return [
+            dict(bob=0, llx=-1, lly=0, lrx=1, lry=1, aw=1, wpx=0, wpy=0),
+            dict(bob=-1, llx=0, lly=0, lrx=0, lry=0, aw=0, wpx=0, wpy=0),
+            dict(bob=0, llx=1, lly=1, lrx=-1, lry=0, aw=-1, wpx=0, wpy=0),
+            dict(bob=-1, llx=0, lly=0, lrx=0, lry=0, aw=0, wpx=0, wpy=0),
+        ][frame % 4]
+    if pose == "attack":
+        return [
+            dict(bob=0, llx=0, lly=0, lrx=0, lry=0, aw=-1, wpx=-2, wpy=-4),  # wind up
+            dict(bob=0, llx=0, lly=0, lrx=1, lry=0, aw=3, wpx=3, wpy=2),     # strike / lunge
+            dict(bob=0, llx=0, lly=0, lrx=0, lry=0, aw=1, wpx=1, wpy=0),     # recover
+        ][frame % 3]
+    return dict(bob=(0 if frame % 2 == 0 else -1), llx=0, lly=0, lrx=0, lry=0, aw=0, wpx=0, wpy=0)
+
+
+def draw_char(p, pose="idle", frame=0):
+    o = _char_pose(pose, frame)
+    aw, wx, wy = o["aw"], o["wpx"], o["wpy"]
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
+    ImageDraw.Draw(img).ellipse([4, 24, 13, 25], fill="#00000040")  # shadow stays put
+    fig = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(fig)
     cx = 9
     skin, body, accent = p["skin"], p["body"], p["accent"]
-    d.ellipse([4, 24, 13, 25], fill="#00000040")
     if p["cape"]:
         fillp(d, [(4, 13), (13, 13), (15, 25), (2, 25)], p["cape"])
-    d.rectangle([6, 22, 8, 25], fill="#3a2c1c")
-    d.rectangle([9, 22, 11, 25], fill="#3a2c1c")
+    d.rectangle([6 + o["llx"], 22 + o["lly"], 8 + o["llx"], 25 + o["lly"]], fill="#3a2c1c")
+    d.rectangle([9 + o["lrx"], 22 + o["lry"], 11 + o["lrx"], 25 + o["lry"]], fill="#3a2c1c")
     if p["body_style"] == "robe":
         fillp(d, [(5, 13), (12, 13), (14, 24), (3, 24)], body)
         d.rectangle([8, 13, 9, 24], fill=accent)
@@ -69,8 +91,9 @@ def draw_char(p):
     else:
         d.rectangle([5, 13, 12, 23], fill=body)
         d.rectangle([5, 13, 12, 15], fill=accent)
-    d.rectangle([3, 14, 4, 19], fill=skin if p["body_style"] != "armor" else body)
-    d.rectangle([13, 14, 14, 19], fill=skin if p["body_style"] != "armor" else body)
+    armskin = skin if p["body_style"] != "armor" else body
+    d.rectangle([3 - aw, 14, 4 - aw, 19], fill=armskin)
+    d.rectangle([13 + aw, 14, 14 + aw, 19], fill=armskin)
     d.ellipse([3, 2, 14, 13], fill=skin)
     if p["ear"] == "elf":
         fillp(d, [(3, 6), (1, 4), (4, 8)], skin)
@@ -133,19 +156,20 @@ def draw_char(p):
         fillp(d, [(3, 5), (8, 3), (14, 5), (16, 0), (12, 4), (8, 1), (5, 4), (1, 0)], "#a02828")
     wpn = p["weapon"]
     if wpn == "sword":
-        d.rectangle([15, 9, 16, 20], fill="#cdd3dc"); d.rectangle([14, 13, 17, 14], fill="#6b4a2a")
+        d.rectangle([15 + wx, 9 + wy, 16 + wx, 20 + wy], fill="#cdd3dc"); d.rectangle([14 + wx, 13 + wy, 17 + wx, 14 + wy], fill="#6b4a2a")
     elif wpn == "axe":
-        d.rectangle([15, 11, 16, 21], fill="#6b4a2a"); fillp(d, [(14, 9), (17, 10), (17, 13), (14, 12)], "#9aa0aa")
+        d.rectangle([15 + wx, 11 + wy, 16 + wx, 21 + wy], fill="#6b4a2a"); fillp(d, [(14 + wx, 9 + wy), (17 + wx, 10 + wy), (17 + wx, 13 + wy), (14 + wx, 12 + wy)], "#9aa0aa")
     elif wpn == "hammer":
-        d.rectangle([15, 11, 16, 22], fill="#6b4a2a"); d.rectangle([13, 8, 17, 12], fill="#80808a")
+        d.rectangle([15 + wx, 11 + wy, 16 + wx, 22 + wy], fill="#6b4a2a"); d.rectangle([13 + wx, 8 + wy, 17 + wx, 12 + wy], fill="#80808a")
     elif wpn == "staff":
-        d.rectangle([15, 7, 16, 22], fill="#6b4a2a"); d.ellipse([13, 4, 17, 8], fill="#8ad8ff")
+        d.rectangle([15 + wx, 7 + wy, 16 + wx, 22 + wy], fill="#6b4a2a"); d.ellipse([13 + wx, 4 + wy, 17 + wx, 8 + wy], fill="#8ad8ff")
     elif wpn == "dagger":
-        d.rectangle([15, 13, 16, 19], fill="#cdd3dc")
+        d.rectangle([15 + wx, 13 + wy, 16 + wx, 19 + wy], fill="#cdd3dc")
     elif wpn == "bow":
-        d.arc([13, 8, 18, 22], 300, 60, fill="#7a5a2a"); d.line([16, 9, 16, 21], fill="#d8d8d8")
+        d.arc([13 + wx, 8 + wy, 18 + wx, 22 + wy], 300, 60, fill="#7a5a2a"); d.line([16 + wx, 9 + wy, 16 + wx, 21 + wy], fill="#d8d8d8")
     elif wpn == "lute":
-        d.ellipse([13, 16, 17, 22], fill="#9c6b3f"); d.rectangle([15, 8, 16, 17], fill="#6b4a2a")
+        d.ellipse([13 + wx, 16 + wy, 17 + wx, 22 + wy], fill="#9c6b3f"); d.rectangle([15 + wx, 8 + wy, 16 + wx, 17 + wy], fill="#6b4a2a")
+    img.alpha_composite(fig, (0, o["bob"]))
     return img
 
 
@@ -164,17 +188,38 @@ def draw_dragon(p):
     return img
 
 
-def draw_wolf(p):
+def _wolf_pose(pose, frame):
+    """bob (whole-body y), lift (per-leg dy for the 4 legs), lunge (whole-body dx)."""
+    if pose == "walk":
+        return [
+            dict(bob=0, lift=(-1, 0, -1, 0), lunge=0),
+            dict(bob=-1, lift=(0, 0, 0, 0), lunge=0),
+            dict(bob=0, lift=(0, -1, 0, -1), lunge=0),
+            dict(bob=-1, lift=(0, 0, 0, 0), lunge=0),
+        ][frame % 4]
+    if pose == "attack":
+        return [
+            dict(bob=0, lift=(0, 0, 0, 0), lunge=-1),
+            dict(bob=0, lift=(0, 0, 0, 0), lunge=2),
+            dict(bob=0, lift=(0, 0, 0, 0), lunge=1),
+        ][frame % 3]
+    return dict(bob=(0 if frame % 2 == 0 else -1), lift=(0, 0, 0, 0), lunge=0)
+
+
+def draw_wolf(p, pose="idle", frame=0):
     """A side-view chibi beast (wolf/animal)."""
+    o = _wolf_pose(pose, frame)
+    lift = o["lift"]
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
+    ImageDraw.Draw(img).ellipse([3, 23, 16, 25], fill="#00000040")  # shadow fixed
+    fig = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(fig)
     c, c2, eye = p["body"], p["accent"], p["eyes"]
-    d.ellipse([3, 23, 16, 25], fill="#00000040")
     # tail
     fillp(d, [(2, 16), (0, 11), (4, 18)], c2)
-    # legs
-    for lx in (5, 8, 11, 13):
-        d.rectangle([lx, 20, lx + 1, 24], fill=c2)
+    # legs (per-leg vertical lift for the gait)
+    for k, lx in enumerate((5, 8, 11, 13)):
+        d.rectangle([lx, 20 + lift[k], lx + 1, 24 + lift[k]], fill=c2)
     # body
     d.ellipse([3, 13, 14, 22], fill=c)
     d.ellipse([4, 18, 13, 23], fill=c2)  # belly shade
@@ -187,23 +232,45 @@ def draw_wolf(p):
     fillp(d, [(14, 11), (16, 7), (15, 11)], c)
     # eye
     d.point((14, 13), fill=eye)
+    img.alpha_composite(fig, (o["lunge"], o["bob"]))
     return img
 
 
-def draw_werewolf(p):
+def _beast_pose(pose, frame):
+    """bob, leg dx (llx/lrx), arm-swing ax (right +, left -), lunge dx."""
+    if pose == "walk":
+        return [
+            dict(bob=0, llx=-1, lrx=1, ax=1, lunge=0),
+            dict(bob=-1, llx=0, lrx=0, ax=0, lunge=0),
+            dict(bob=0, llx=1, lrx=-1, ax=-1, lunge=0),
+            dict(bob=-1, llx=0, lrx=0, ax=0, lunge=0),
+        ][frame % 4]
+    if pose == "attack":
+        return [
+            dict(bob=0, llx=0, lrx=0, ax=-1, lunge=-1),
+            dict(bob=0, llx=0, lrx=0, ax=3, lunge=2),
+            dict(bob=0, llx=0, lrx=0, ax=1, lunge=1),
+        ][frame % 3]
+    return dict(bob=(0 if frame % 2 == 0 else -1), llx=0, lrx=0, ax=0, lunge=0)
+
+
+def draw_werewolf(p, pose="idle", frame=0):
     """A hunched bipedal beast (also the player's Beast Form)."""
+    o = _beast_pose(pose, frame)
+    ax = o["ax"]
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
+    ImageDraw.Draw(img).ellipse([4, 24, 14, 25], fill="#00000040")  # shadow fixed
+    fig = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(fig)
     c, c2, eye = p["body"], p["accent"], p["eyes"]
-    d.ellipse([4, 24, 14, 25], fill="#00000040")
-    d.rectangle([6, 20, 8, 25], fill=c2)            # legs
-    d.rectangle([10, 20, 12, 25], fill=c2)
+    d.rectangle([6 + o["llx"], 20, 8 + o["llx"], 25], fill=c2)   # legs
+    d.rectangle([10 + o["lrx"], 20, 12 + o["lrx"], 25], fill=c2)
     d.ellipse([4, 11, 14, 21], fill=c)              # hunched torso
     d.ellipse([5, 15, 12, 21], fill=c2)             # belly
-    d.rectangle([2, 12, 4, 19], fill=c)             # arms
-    d.rectangle([14, 12, 16, 19], fill=c)
-    for hx in (2, 15):                              # claws
-        fillp(d, [(hx, 19), (hx + 1, 22), (hx + 2, 19)], "#e8e4d8")
+    d.rectangle([2 - ax, 12, 4 - ax, 19], fill=c)   # arms (swing)
+    d.rectangle([14 + ax, 12, 16 + ax, 19], fill=c)
+    fillp(d, [(2 - ax, 19), (3 - ax, 22), (4 - ax, 19)], "#e8e4d8")    # claws
+    fillp(d, [(15 + ax, 19), (16 + ax, 22), (17 + ax, 19)], "#e8e4d8")
     d.ellipse([8, 3, 17, 12], fill=c)               # wolf head
     fillp(d, [(16, 7), (18, 8), (16, 10)], c)       # snout
     d.point((17, 9), fill="#1a1a1a")
@@ -211,6 +278,7 @@ def draw_werewolf(p):
     fillp(d, [(14, 4), (16, 0), (15, 4)], c)
     d.point((12, 7), fill=eye)
     d.point((15, 7), fill=eye)
+    img.alpha_composite(fig, (o["lunge"], o["bob"]))
     return img
 
 

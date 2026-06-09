@@ -12,7 +12,7 @@ from sprite_lib import (W, H, resolve, draw_char, draw_dragon, draw_wolf,
 
 PX = 3
 CW, CH = W * PX, H * PX     # 54 x 78 per cell
-COLS = 8
+COLS = 12                   # one entity per row; frames packed left-to-right
 
 # key -> sprite config (drawer chosen by optional "kind")
 ATLAS = [
@@ -42,34 +42,44 @@ ATLAS = [
     ("npc_merchant", dict(race="breton", body="#6a5a8a", body_style="tunic", accent="#caa24a", hair="#3a2a18", beard=True)),
 ]
 
-DRAWERS = {"dragon": draw_dragon, "wolf": draw_wolf, "werewolf": draw_werewolf,
-           "skeleton": draw_skeleton, "spider": draw_spider, "crab": draw_crab}
+# Per-row frame layout: (state, frame-count, fps, start-column).
+STATES_FULL = [("idle", 2, 3, 0), ("walk", 4, 9, 2), ("attack", 3, 18, 6)]
+STATES_IDLE = [("idle", 2, 2, 0)]  # NPCs just idle
 
 
-def render(c):
-    p = resolve(c)
-    fn = DRAWERS.get(c.get("kind"))
-    return fn(p) if fn else draw_char(p)
+def render_frame(cfg, pose, frame):
+    k = cfg.get("kind")
+    p = resolve(cfg)
+    if k == "werewolf":
+        return draw_werewolf(p, pose, frame)
+    if k == "wolf":
+        return draw_wolf(p, pose, frame)
+    return draw_char(p, pose, frame)
 
 
 def main():
-    n = len(ATLAS)
-    rows = (n + COLS - 1) // COLS
+    rows = len(ATLAS)
     sheet = Image.new("RGBA", (COLS * CW, rows * CH), (0, 0, 0, 0))
     index = {}
     for i, (key, cfg) in enumerate(ATLAS):
-        spr = render(cfg).resize((CW, CH), Image.NEAREST)
-        col, row = i % COLS, i // COLS
-        sheet.alpha_composite(spr, (col * CW, row * CH))
-        index[key] = (col, row)
+        states = STATES_IDLE if key.startswith("npc_") else STATES_FULL
+        idx = {}
+        for (state, n, fps, start) in states:
+            for f in range(n):
+                spr = render_frame(cfg, state, f).resize((CW, CH), Image.NEAREST)
+                sheet.alpha_composite(spr, ((start + f) * CW, i * CH))
+            idx[state] = (start, n, fps)
+        index[key] = (i, idx)
     out = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets", "atlas.png"))
     os.makedirs(os.path.dirname(out), exist_ok=True)
     sheet.save(out)
-    print(f"Wrote {out}  ({sheet.width}x{sheet.height}, {n} sprites, PX={PX} cell={CW}x{CH} cols={COLS})")
+    print(f"Wrote {out}  ({sheet.width}x{sheet.height}, {rows} rows, PX={PX} cell={CW}x{CH} cols={COLS})")
     print("---- paste into Atlas.ts ----")
-    print(f"const PX = {PX}, COLS = {COLS};")
-    body = ",\n  ".join(f'{k}: [{c}, {r}]' for k, (c, r) in index.items())
-    print("const SPRITES: Record<string, [number, number]> = {\n  " + body + ",\n};")
+    lines = []
+    for key, (row, idx) in index.items():
+        sts = ", ".join(f"{s}: {{ col: {c}, n: {n}, fps: {fps} }}" for s, (c, n, fps) in idx.items())
+        lines.append(f"  {key}: {{ row: {row}, states: {{ {sts} }} }}")
+    print("const SPRITES: Record<string, SpriteDef> = {\n" + ",\n".join(lines) + ",\n};")
 
 
 if __name__ == "__main__":
