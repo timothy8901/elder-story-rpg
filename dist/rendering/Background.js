@@ -66,13 +66,19 @@ function wrap(offset, span) {
 function drawField(r, cam, time) {
     const ctx = r.ctx;
     const { width: W, height: H } = r;
-    // Sky gradient.
-    const sky = ctx.createLinearGradient(0, 0, 0, H);
-    sky.addColorStop(0, "#6ec6f5");
-    sky.addColorStop(0.55, "#b6e6fb");
-    sky.addColorStop(1, "#e9f8ef");
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, W, H);
+    // Sky as hard horizontal bands (pixel style, not a smooth ramp), with a 2px
+    // dither row between bands for a retro gradient feel.
+    const bands = ["#5bb8ef", "#74c5f1", "#8fd5f3", "#a9e2ef", "#c6efe6"];
+    const bh = Math.ceil(H / bands.length);
+    for (let i = 0; i < bands.length; i++) {
+        ctx.fillStyle = bands[i];
+        ctx.fillRect(0, i * bh, W, bh);
+        if (i + 1 < bands.length) {
+            ctx.fillStyle = bands[i + 1];
+            for (let dx = 0; dx < W; dx += 8)
+                ctx.fillRect(dx, (i + 1) * bh - 2, 4, 2);
+        }
+    }
     // Sun glow (top-right, fixed).
     const sun = ctx.createRadialGradient(W - 140, 96, 12, W - 140, 96, 130);
     sun.addColorStop(0, "rgba(255,250,210,0.95)");

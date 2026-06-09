@@ -41,150 +41,108 @@ export function drawTilemap(r: Renderer, cam: Camera, map: Tilemap, theme: MapTh
   });
 }
 
+/** Flat two-band body + chunky 2px speckles (no smooth gradients — pixel style). */
+function banded(ctx: CanvasRenderingContext2D, x: number, y: number, top: string, bot: string, speck: string, col: number, row: number): void {
+  ctx.fillStyle = top;
+  ctx.fillRect(x, y, T, T);
+  ctx.fillStyle = bot;
+  ctx.fillRect(x, y + (T >> 1), T, T >> 1);
+  ctx.fillStyle = speck;
+  for (let i = 0; i < 4; i++) {
+    const px = x + Math.floor(hash(col * 4 + i, row) * (T - 4)) + 1;
+    const py = y + Math.floor(hash(col, row * 4 + i) * (T - 7)) + 5;
+    ctx.fillRect(px, py, 2, 2);
+  }
+}
+
 function drawEarth(ctx: CanvasRenderingContext2D, map: Tilemap, col: number, row: number, x: number, y: number): void {
   const topOpen = map.tileAt(col, row - 1) !== TileType.Solid;
   const leftOpen = map.tileAt(col - 1, row) !== TileType.Solid;
   const rightOpen = map.tileAt(col + 1, row) !== TileType.Solid;
 
-  // Dirt body.
-  const g = ctx.createLinearGradient(0, y, 0, y + T);
-  g.addColorStop(0, "#a9743f");
-  g.addColorStop(1, "#7c4f27");
-  ctx.fillStyle = g;
-  ctx.fillRect(x, y, T, T);
+  banded(ctx, x, y, "#9c6638", "#774a24", "#5e3d1f", col, row);
 
-  // Pebble speckles.
-  ctx.fillStyle = "rgba(60,38,18,0.5)";
-  for (let i = 0; i < 4; i++) {
-    const px = x + hash(col * 4 + i, row) * (T - 5) + 2;
-    const py = y + hash(col, row * 4 + i) * (T - 6) + 4;
-    ctx.fillRect(px, py, 2, 2);
-  }
-
-  // Edge shading.
   if (leftOpen) {
-    ctx.fillStyle = "rgba(0,0,0,0.18)";
-    ctx.fillRect(x, y, 3, T);
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(x, y, 2, T);
   }
   if (rightOpen) {
-    ctx.fillStyle = "rgba(255,220,160,0.12)";
-    ctx.fillRect(x + T - 3, y, 3, T);
+    ctx.fillStyle = "rgba(255,220,160,0.14)";
+    ctx.fillRect(x + T - 2, y, 2, T);
   }
 
-  // Grassy cap on exposed top.
+  // Flat, chunky grass cap on an exposed top.
   if (topOpen) {
-    const grassH = 11;
-    ctx.fillStyle = "#62a83e";
-    ctx.beginPath();
-    ctx.moveTo(x, y + grassH);
-    ctx.lineTo(x, y + 3);
-    // wavy bottom edge of the grass so adjacent tiles blend
-    ctx.lineTo(x, y);
-    ctx.lineTo(x + T, y);
-    ctx.lineTo(x + T, y + grassH);
-    ctx.quadraticCurveTo(x + T * 0.75, y + grassH + 4, x + T * 0.5, y + grassH);
-    ctx.quadraticCurveTo(x + T * 0.25, y + grassH - 4, x, y + grassH);
-    ctx.closePath();
-    ctx.fill();
-    // brighter top highlight
+    ctx.fillStyle = "#56a038";
+    ctx.fillRect(x, y, T, 9);
     ctx.fillStyle = "#7ac74f";
-    ctx.fillRect(x, y, T, 4);
-    // a couple of blades
-    ctx.strokeStyle = "#4f8f30";
-    ctx.lineWidth = 1.5;
-    for (let i = 0; i < 2; i++) {
-      const bx = x + 6 + i * 14 + hash(col, row + i) * 6;
-      ctx.beginPath();
-      ctx.moveTo(bx, y + 2);
-      ctx.lineTo(bx + (i ? 2 : -2), y - 4);
-      ctx.stroke();
+    ctx.fillRect(x, y, T, 3);
+    // chunky dithered bottom edge so the grass doesn't read as a flat line
+    ctx.fillStyle = "#56a038";
+    for (let i = 0; i < T; i += 4) {
+      if ((col * 5 + (i >> 2)) % 2 === 0) ctx.fillRect(x + i, y + 9, 4, 2);
     }
+    // a couple of blades poking up
+    ctx.fillStyle = "#4f8f30";
+    ctx.fillRect(x + 5, y - 3, 2, 4);
+    ctx.fillRect(x + T - 9, y - 2, 2, 3);
   }
 }
 
 function drawStone(ctx: CanvasRenderingContext2D, map: Tilemap, col: number, row: number, x: number, y: number): void {
   const topOpen = map.tileAt(col, row - 1) !== TileType.Solid;
-  const g = ctx.createLinearGradient(0, y, 0, y + T);
-  g.addColorStop(0, "#4b4663");
-  g.addColorStop(1, "#322d46");
-  ctx.fillStyle = g;
-  ctx.fillRect(x, y, T, T);
+  banded(ctx, x, y, "#494363", "#2f2a44", "#211c33", col, row);
 
-  // Cracks.
-  ctx.strokeStyle = "rgba(20,16,30,0.55)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  const cxp = x + 6 + hash(col, row) * 18;
-  ctx.moveTo(cxp, y + 4);
-  ctx.lineTo(cxp + 4, y + 14);
-  ctx.lineTo(cxp - 3, y + 24);
-  ctx.stroke();
+  // Chunky crack (a few dark pixels stepping down).
+  ctx.fillStyle = "rgba(18,14,28,0.6)";
+  const cxp = x + 5 + Math.floor(hash(col, row) * 16);
+  ctx.fillRect(cxp, y + 4, 2, 4);
+  ctx.fillRect(cxp + 2, y + 12, 2, 4);
+  ctx.fillRect(cxp - 1, y + 20, 2, 4);
 
   if (topOpen) {
     ctx.fillStyle = "#5e587a";
-    ctx.fillRect(x, y, T, 4);
-    ctx.fillStyle = "rgba(150,200,255,0.12)";
-    ctx.fillRect(x, y, T, 2);
+    ctx.fillRect(x, y, T, 3);
+    ctx.fillStyle = "#8aa0d0";
+    ctx.fillRect(x, y, T, 1);
   }
 }
 
 function drawMetal(ctx: CanvasRenderingContext2D, map: Tilemap, col: number, row: number, x: number, y: number): void {
   const topOpen = map.tileAt(col, row - 1) !== TileType.Solid;
-  const g = ctx.createLinearGradient(0, y, 0, y + T);
-  g.addColorStop(0, "#7a6336");
-  g.addColorStop(1, "#4f3f20");
-  ctx.fillStyle = g;
-  ctx.fillRect(x, y, T, T);
+  banded(ctx, x, y, "#79612f", "#4f3f20", "#2e2410", col, row);
+
   // Rivets at the corners.
-  ctx.fillStyle = "rgba(255,210,120,0.55)";
-  ctx.fillRect(x + 4, y + 4, 2, 2);
-  ctx.fillRect(x + T - 6, y + 4, 2, 2);
-  ctx.fillRect(x + 4, y + T - 6, 2, 2);
-  ctx.fillRect(x + T - 6, y + T - 6, 2, 2);
-  // Panel seam.
-  ctx.strokeStyle = "rgba(20,14,6,0.5)";
+  ctx.fillStyle = "#e8c878";
+  ctx.fillRect(x + 3, y + 3, 2, 2);
+  ctx.fillRect(x + T - 5, y + 3, 2, 2);
+  ctx.fillRect(x + 3, y + T - 5, 2, 2);
+  ctx.fillRect(x + T - 5, y + T - 5, 2, 2);
+  // Hard panel seam (1px square frame).
+  ctx.strokeStyle = "rgba(20,14,6,0.55)";
   ctx.lineWidth = 1;
   ctx.strokeRect(x + 1.5, y + 1.5, T - 3, T - 3);
   if (topOpen) {
-    ctx.fillStyle = "#a4854a";
+    ctx.fillStyle = "#b99550";
     ctx.fillRect(x, y, T, 3);
   }
 }
 
 function drawFoothold(ctx: CanvasRenderingContext2D, x: number, y: number, theme: MapTheme): void {
-  const h = 11;
+  const h = 10;
   const wood = theme === "cave" ? "#5b5570" : theme === "dwarven" ? "#8a6f3c" : "#9c6b3f";
   const top = theme === "cave" ? "#7d769a" : theme === "dwarven" ? "#bfa05a" : "#c79a5e";
   const under = theme === "cave" ? "#332f44" : theme === "dwarven" ? "#42351a" : "#5e3d1f";
 
-  // Rounded plank.
+  // Square plank, flat bands (pixel style).
   ctx.fillStyle = wood;
-  rr(ctx, x + 1, y, T - 2, h, 5);
-  ctx.fill();
-  // Top highlight.
+  ctx.fillRect(x + 1, y, T - 2, h);
   ctx.fillStyle = top;
-  rr(ctx, x + 1, y, T - 2, 4, 4);
-  ctx.fill();
-  // Underside shadow.
+  ctx.fillRect(x + 1, y, T - 2, 3);
   ctx.fillStyle = under;
-  ctx.fillRect(x + 3, y + h - 2, T - 6, 2);
-  // Plank seam.
-  ctx.strokeStyle = "rgba(0,0,0,0.18)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(x + T / 2, y + 3);
-  ctx.lineTo(x + T / 2, y + h - 2);
-  ctx.stroke();
-}
-
-/** Rounded-rect path (uses arcTo for broad browser support). */
-function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius: number): void {
-  const r = Math.min(radius, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
+  ctx.fillRect(x + 1, y + h - 2, T - 2, 2);
+  // a couple of plank seams
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.fillRect(x + (T >> 1), y + 3, 1, h - 4);
+  ctx.fillRect(x + (T >> 2), y + 3, 1, h - 4);
 }
