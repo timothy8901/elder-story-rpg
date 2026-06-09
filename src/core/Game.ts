@@ -27,6 +27,7 @@ import type { GameMap, MapExit } from "../world/GameMap.js";
 import { createMap, FIRST_MAP_ID } from "../world/maps/index.js";
 import { drawBackground } from "../rendering/Background.js";
 import { drawTilemap } from "../rendering/Tiles.js";
+import { Particles } from "../combat/Particles.js";
 import { drawNpc, drawPortal, drawQuestArrow, type NpcMarker } from "../rendering/sprites.js";
 import { Camera } from "./Camera.js";
 import { Input } from "./Input.js";
@@ -76,6 +77,14 @@ export class Game {
   private resetting = false;
   private static readonly AUTOSAVE_INTERVAL = 10;
   private static readonly RESET_CONFIRM_WINDOW = 3;
+  // Juice: world particles + screen-space weather + brief hit-stop on impact.
+  private readonly particles = new Particles();
+  private readonly weather = new Particles(true);
+  private hitStop = 0;
+  private prevOnGround = true;
+  private prevVy = 0;
+  private footTimer = 0;
+  private ambientTimer = 0;
   // Beast Form (Companions unlock).
   private beastTimer = 0;
   private beastCooldown = 0;
@@ -210,8 +219,15 @@ export class Game {
       this.autosave(); // saving on open (and close) per spec
     }
 
-    if (this.menu.open) this.updateMenu();
-    else this.updateWorld(dt);
+    if (this.menu.open) {
+      this.updateMenu();
+    } else if (this.hitStop > 0) {
+      // Brief freeze on a heavy hit — skip the world step but keep draining the
+      // freeze timer (and HUD/input housekeeping) so it resumes cleanly.
+      this.hitStop = Math.max(0, this.hitStop - dt);
+    } else {
+      this.updateWorld(dt);
+    }
 
     this.hud.update(dt);
     this.input.clearTransients();
@@ -287,6 +303,56 @@ export class Game {
 
     this.combat.update(dt, ctx);
     this.camera.follow(this.player.body.centerX, this.player.body.centerY);
+    this.updateFx(dt);
+  }
+
+  /** Movement dust, theme ambient motes, weather, and particle ticking. */
+  private updateFx(dt: number): void {
+    const b = this.player.body;
+    const feetX = b.centerX;
+    const feetY = b.pos.y + b.h;
+
+    if (b.onGround && Math.abs(b.vel.x) > 60) {
+      this.footTimer -= dt;
+      if (this.footTimer <= 0) {
+        this.footTimer = 0.16;
+        this.particles.burst(feetX - Math.sign(b.vel.x) * 6, feetY - 2, 2, { color: "#caa46f", speed: 26, life: 0.3, gravity: 90, dir: Math.PI, spread: 1.2, rise: 6 });
+      }
+    }
+    if (this.prevOnGround && !b.onGround && b.vel.y < 0) {
+      this.particles.burst(feetX, feetY - 2, 5, { color: "#dcd6c4", speed: 42, life: 0.3, gravity: 130, dir: -Math.PI / 2, spread: 1.8, rise: 0 });
+    } else if (!this.prevOnGround && b.onGround && this.prevVy > 240) {
+      const n = Math.min(12, 4 + Math.floor(this.prevVy / 90));
+      this.particles.burst(feetX, feetY - 2, n, { color: "#dcd6c4", speed: 75, life: 0.34, gravity: 130, dir: -Math.PI / 2, spread: Math.PI, rise: 0 });
+      this.camera.shake(Math.min(3, this.prevVy / 360), 0.08);
+    }
+    this.prevOnGround = b.onGround;
+    this.prevVy = b.vel.y;
+
+    // Theme ambient motes drifting within the visible area.
+    this.ambientTimer -= dt;
+    if (this.ambientTimer <= 0) {
+      this.ambientTimer = 0.12;
+      const W = this.renderer.width;
+      const H = this.renderer.height;
+      const ax = this.camera.x + Math.random() * W;
+      const ay = this.camera.y + Math.random() * H;
+      if (this.map.theme === "cave") {
+        this.particles.spawn(ax, ay, (Math.random() - 0.5) * 6, 8 + Math.random() * 8, 2.4, "rgba(150,170,210,0.5)", 1, 6);
+      } else if (this.map.theme === "dwarven") {
+        this.particles.spawn(ax, this.camera.y + H, (Math.random() - 0.5) * 6, -(22 + Math.random() * 24), 1.6, "#ff9a3c", 2, -12);
+      } else {
+        this.particles.spawn(ax, ay, (Math.random() - 0.5) * 10, -(6 + Math.random() * 8), 2.0, "rgba(255,240,150,0.7)", 1, -4);
+      }
+    }
+
+    // Snow on the high mountain.
+    if (this.mapId === "throat") {
+      this.weather.spawn(Math.random() * this.renderer.width, -4, (Math.random() - 0.5) * 20 - 8, 45 + Math.random() * 45, 5, "rgba(255,255,255,0.85)", 2, 0);
+    }
+
+    this.particles.update(dt);
+    this.weather.update(dt);
   }
 
   // --- Spells -------------------------------------------------------------
@@ -343,6 +409,11 @@ export class Game {
     const shout = SHOUTS[this.selectedShout];
     this.combat.shout(shout, this.player);
     this.shoutCooldown = shout.cooldown;
+    // Thu'um kick: a strong shake + a cone of particles in the facing direction.
+    const b = this.player.body;
+    this.camera.shake(9, 0.28);
+    this.hitStop = Math.max(this.hitStop, 0.06);
+    this.particles.burst(b.centerX + b.facing * 18, b.centerY, 18, { color: shout.color, speed: 220, life: 0.4, gravity: 0, dir: b.facing === 1 ? 0 : Math.PI, spread: 0.9, rise: 0 });
   }
 
   // --- Factions: dialogue, recruitment, rewards ---------------------------
@@ -624,6 +695,11 @@ export class Game {
       onPlayerDamaged: (raw, knockDir) => this.damagePlayer(raw, knockDir),
       onProgress: (events) => this.onProgress(events),
       onEnemyDeath: (enemy) => this.onEnemyDeath(enemy),
+      onImpact: (x, y, color, power) => {
+        this.particles.burst(x, y, power >= 2 ? 12 : 7, { color, speed: 70 + power * 30, life: 0.35, gravity: 300 });
+        this.camera.shake(power >= 2 ? 5 : 2.4, power >= 2 ? 0.18 : 0.1);
+        if (power >= 2) this.hitStop = Math.max(this.hitStop, 0.05); // power/sneak hits punch
+      },
     };
   }
 
@@ -650,6 +726,8 @@ export class Game {
     this.character.hp -= dmg;
     this.player.applyHurt(knockDir);
     this.combat.damageNumbers.spawn(this.player.body.centerX, this.player.body.pos.y, dmg, "#ff8a8a");
+    this.camera.shake(6, 0.22);
+    this.particles.burst(this.player.body.centerX, this.player.body.centerY, 9, { color: "#ff6a6a", speed: 110, life: 0.4, gravity: 320 });
 
     // Wearing armor and taking a hit trains the matching armor skill.
     const armorSkill = this.armorSkillInUse();
@@ -726,6 +804,7 @@ export class Game {
     this.combat.damageNumbers.spawn(this.player.body.centerX, this.player.body.pos.y - 10, healed, "#7dffa0");
     this.inventory.remove(potion.uid);
     this.hud.pushToast(`Used ${potion.name} (+${healed} HP).`, "#7dffa0");
+    this.particles.burst(this.player.body.centerX, this.player.body.centerY, 12, { color: "#9dffb8", speed: 55, life: 0.6, gravity: -45, rise: 0 });
     this.autosave();
   }
 
@@ -840,6 +919,13 @@ export class Game {
       }
     });
 
+    // Particles (world) + weather (screen) + lighting, before the UI.
+    this.particles.render(r, cam);
+    this.weather.render(r, cam);
+    const tint = this.map.theme === "cave" ? "#22305a" : this.map.theme === "dwarven" ? "#3a1e08" : null;
+    const tintAlpha = this.map.theme === "field" ? 0 : 0.2;
+    r.vignette(tint, tintAlpha, this.player.body.centerX - cam.renderX, this.player.body.centerY - cam.renderY);
+
     if (this.menu.open) {
       this.menu.render(r, this.character, this.inventory, this.equipment, this.factions, this.mainQuest, this.dwarvenQuest);
     } else {
@@ -864,13 +950,13 @@ export class Game {
       const npc = this.nearbyNpc();
       if (npc && !this.dialogue.open) {
         const verb = npc.vendor ? "trade with" : "talk to";
-        r.text(`Press E to ${verb} ${npc.name}`, npc.centerX - cam.x, npc.y - cam.y - 38, "#ffffff", "bold 11px monospace", "center");
+        r.text(`Press E to ${verb} ${npc.name}`, npc.centerX - cam.renderX, npc.y - cam.renderY - 38, "#ffffff", "bold 11px monospace", "center");
       }
       // "Press ↑" prompt when standing in a ground portal.
       const exit = this.currentExit();
       if (exit && !this.dialogue.open) {
         const b = this.player.body;
-        r.text(`Press ↑ to enter ${exit.label}`, b.centerX - cam.x, b.pos.y - cam.y - 16, "#ffffff", "bold 12px monospace", "center");
+        r.text(`Press ↑ to enter ${exit.label}`, b.centerX - cam.renderX, b.pos.y - cam.renderY - 16, "#ffffff", "bold 12px monospace", "center");
       }
       // (Keyboard controls are shown below the canvas, in index.html.)
 

@@ -44,7 +44,16 @@ export function drawPlayer(ctx, p, time) {
         if (p.sneaking)
             ctx.globalAlpha = 0.9;
         const pPhase = p.attackTimer > 0 ? 1 - p.attackTimer / 0.18 : undefined;
+        // Squash/stretch while airborne (feet stay planted), eased to none at apex.
+        const k = b.onGround ? 0 : Math.min(1, Math.abs(b.vel.y) / 900);
+        ctx.save();
+        if (k > 0) {
+            ctx.translate(cx, feetY);
+            ctx.scale(1 - 0.12 * k, 1 + 0.16 * k);
+            ctx.translate(-cx, -feetY);
+        }
         atlas.drawAnimated(ctx, pkey, playerState(p), cx, feetY, h * (p.sneaking ? 1.32 : 1.5), dir < 0, time, pPhase);
+        ctx.restore();
         ctx.globalAlpha = 1;
         if (p.attackTimer > 0)
             slashFx(ctx, cx, y + h * 0.45, dir, 1 - p.attackTimer / 0.18);

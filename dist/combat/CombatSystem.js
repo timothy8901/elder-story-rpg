@@ -198,6 +198,7 @@ export class CombatSystem {
                 e.lastHitBySpell = false;
                 e.takeHit(hit.damage, hit.knockDir, hit.knockback);
                 this.damageNumbers.spawn(e.body.centerX, e.body.pos.y, hit.damage);
+                ctx.onImpact?.(e.body.centerX, e.body.pos.y + e.body.h * 0.4, "#fff4cc", hit.knockback >= KNOCKBACK.power ? 2 : 1);
                 if (hit.fire > 0) {
                     e.takeHit(hit.fire, hit.knockDir, 0); // no extra knockback for the fire tick
                     this.damageNumbers.spawn(e.body.centerX, e.body.pos.y - 14, hit.fire, "#ff8a3d");
@@ -230,6 +231,7 @@ export class CombatSystem {
                     e.lastHitBySpell = true;
                     e.takeHit(p.damage, Math.sign(p.vx) || 1, KNOCKBACK.spell);
                     this.damageNumbers.spawn(e.body.centerX, e.body.pos.y, p.damage, p.color);
+                    ctx.onImpact?.(p.x, p.y, p.color, 1);
                     ctx.onProgress(ctx.character.gainSkillXp(p.skill, XP_RANGED_HIT));
                     continue outer; // projectile consumed
                 }

@@ -47,8 +47,8 @@ export class DamageNumbers {
   render(r: Renderer, cam: Camera): void {
     for (const n of this.nums) {
       const alpha = 1 - n.age / n.life;
-      const sx = Math.round(n.x - cam.x);
-      const sy = Math.round(n.y - cam.y);
+      const sx = Math.round(n.x - cam.renderX);
+      const sy = Math.round(n.y - cam.renderY);
       r.ctx.globalAlpha = Math.max(0, alpha);
       r.text(n.text, sx + 1, sy + 1, "rgba(0,0,0,0.7)", "bold 16px monospace", "center");
       r.text(n.text, sx, sy, n.color, "bold 16px monospace", "center");
