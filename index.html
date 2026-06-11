@@ -63,6 +63,33 @@
         image-rendering: pixelated;
         border-radius: 6px;
       }
+      /* Cross-promo: more from Not Tim Games. */
+      #studio-links {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        margin: 2px 0 18px;
+      }
+      #studio-links .label {
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #6b7689;
+      }
+      #studio-links a {
+        color: #41e8ff;
+        text-decoration: none;
+        font-size: 14px;
+        letter-spacing: 0.06em;
+        padding-bottom: 2px;
+        border-bottom: 1px solid transparent;
+        transition: color 0.15s ease, border-color 0.15s ease;
+      }
+      #studio-links a:hover {
+        color: #ffffff;
+        border-color: #41e8ff;
+      }
     </style>
   </head>
   <body>
@@ -93,6 +120,12 @@
     <!-- Studio banner (pixel-art logo), beneath the controls. -->
     <canvas id="banner" width="480" height="250" role="img" aria-label="Not Tim Games"></canvas>
     <script src="./assets/banner.js"></script>
+
+    <!-- Cross-promo to the studio's other game. -->
+    <nav id="studio-links">
+      <span class="label">More from Not Tim Games</span>
+      <a href="https://timothy8901.github.io/robo-revolution/">▸ Play Robo Revolution</a>
+    </nav>
 
     <!-- Compiled by `tsc` from src/ into dist/. Loaded as a native ES module. -->
     <script type="module" src="./dist/main.js"></script>
