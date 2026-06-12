@@ -2,3 +2,10 @@ node_modules/
 .DS_Store
 *.log
 npm-debug.log*
+
+# Local tooling (preview dev-server config)
+.claude/
+
+# Raw CC0 source packs — only tools/build_assets.py consumes them; the processed
+# outputs (assets/tiles.png, assets/bg/*) are committed. Re-download per CREDITS.md.
+assets/raw/

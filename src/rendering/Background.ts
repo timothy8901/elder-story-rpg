@@ -1,6 +1,25 @@
+import { ASSET_VERSION } from "../config.js";
 import type { Camera } from "../core/Camera.js";
 import type { Renderer } from "../core/Renderer.js";
 import type { GameMap } from "../world/GameMap.js";
+
+/**
+ * Sunny Land (CC0, by @ansimuz) parallax layers for the field theme, sliced by
+ * tools/build_assets.py. If either PNG is missing we fall back to the procedural
+ * banded sky + rolling hills in drawField below.
+ */
+const fieldBack = new Image();
+const fieldMid = new Image();
+let fieldBackReady = false;
+let fieldMidReady = false;
+fieldBack.onload = () => {
+  fieldBackReady = true;
+};
+fieldMid.onload = () => {
+  fieldMidReady = true;
+};
+fieldBack.src = `assets/bg/field_back.png?v=${ASSET_VERSION}`;
+fieldMid.src = `assets/bg/field_mid.png?v=${ASSET_VERSION}`;
 
 /**
  * Multi-layer parallax backdrops drawn in screen space. Each layer scrolls at a
@@ -74,6 +93,12 @@ function drawField(r: Renderer, cam: Camera, time: number): void {
   const ctx = r.ctx;
   const { width: W, height: H } = r;
 
+  // Real pixel-art parallax (Sunny Land) when loaded; procedural sky below otherwise.
+  if (fieldBackReady && fieldMidReady) {
+    drawFieldImg(ctx, cam, W, H);
+    return;
+  }
+
   // Sky as hard horizontal bands (pixel style, not a smooth ramp), with a 2px
   // dither row between bands for a retro gradient feel.
   const bands = ["#5bb8ef", "#74c5f1", "#8fd5f3", "#a9e2ef", "#c6efe6"];
@@ -111,6 +136,41 @@ function drawField(r: Renderer, cam: Camera, time: number): void {
 
   // Near tree/bush silhouettes along the bottom.
   drawHills(ctx, W, H, wrap(cam.x * 0.55, 300), 300, H * 0.84, 120, "#79bd66");
+}
+
+/** Sunny Land parallax: sky/cloud strip (slow) + tiled tree-mounds (faster), pixel-crisp. */
+function drawFieldImg(ctx: CanvasRenderingContext2D, cam: Camera, W: number, H: number): void {
+  ctx.imageSmoothingEnabled = false;
+
+  // Far layer: sky + clouds + water, width-fit and tiled, anchored to the top.
+  const bScale = W / fieldBack.width;
+  const bw = fieldBack.width * bScale;
+  const bh = fieldBack.height * bScale;
+  const bOff = wrap(cam.x * 0.12, bw);
+  for (let x = bOff - bw; x < W + bw; x += bw) {
+    ctx.drawImage(fieldBack, x, 0, bw, bh);
+  }
+
+  // Midground: teal tree-mounds, anchored to the bottom, faster scroll. Slightly
+  // translucent so the bright sky bleeds through and they read as distant.
+  const mh = H * 0.66;
+  const topY = H - mh;
+  const mScale = mh / fieldMid.height;
+  const mw = fieldMid.width * mScale;
+  const mOff = wrap(cam.x * 0.3, mw);
+  ctx.globalAlpha = 0.86;
+  for (let x = mOff - mw; x < W + mw; x += mw) {
+    ctx.drawImage(fieldMid, x, topY, mw, mh);
+  }
+  ctx.globalAlpha = 1;
+
+  // Atmospheric haze over the mounds' upper half: fades their tops into the sky
+  // (hiding the tiling seams) and lifts the overall brightness near the horizon.
+  const haze = ctx.createLinearGradient(0, topY, 0, topY + mh * 0.62);
+  haze.addColorStop(0, "rgba(173,225,233,0.62)");
+  haze.addColorStop(1, "rgba(173,225,233,0)");
+  ctx.fillStyle = haze;
+  ctx.fillRect(0, topY, W, mh * 0.62);
 }
 
 function cloud(ctx: CanvasRenderingContext2D, x: number, y: number): void {

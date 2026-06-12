@@ -1,5 +1,21 @@
-import { TILE_SIZE as T } from "../config.js";
+import { TILE_SIZE as T, ASSET_VERSION } from "../config.js";
 import { TileType } from "../types.js";
+/**
+ * Sunny Land (CC0, by @ansimuz) field tileset, assembled by tools/build_assets.py.
+ * Columns: inner, top, topL, topR, left, right, oneway (16px each); row 0 = field.
+ * If the PNG is missing the renderer falls back to the procedural draws below.
+ */
+const SRC_T = 16;
+const tilesImg = new Image();
+let tilesReady = false;
+tilesImg.onload = () => {
+    tilesReady = true;
+};
+tilesImg.src = `assets/tiles.png?v=${ASSET_VERSION}`;
+/** Source column for a field solid tile: grass-capped when its top is exposed, else plain dirt. */
+function fieldSolidCol(map, col, row) {
+    return map.tileAt(col, row - 1) !== TileType.Solid ? 1 : 0;
+}
 /** Stable pseudo-random in [0,1) from tile coords — keeps speckles from flickering. */
 function hash(c, r) {
     const s = Math.sin(c * 127.1 + r * 311.7) * 43758.5453;
@@ -24,7 +40,10 @@ export function drawTilemap(r, cam, map, theme) {
                 const x = col * T;
                 const y = row * T;
                 if (tile === TileType.Solid) {
-                    if (theme === "cave")
+                    if (theme === "field" && tilesReady) {
+                        ctx.drawImage(tilesImg, fieldSolidCol(map, col, row) * SRC_T, 0, SRC_T, SRC_T, x, y, T, T);
+                    }
+                    else if (theme === "cave")
                         drawStone(ctx, map, col, row, x, y);
                     else if (theme === "dwarven")
                         drawMetal(ctx, map, col, row, x, y);
@@ -32,7 +51,13 @@ export function drawTilemap(r, cam, map, theme) {
                         drawEarth(ctx, map, col, row, x, y);
                 }
                 else {
-                    drawFoothold(ctx, x, y, theme);
+                    // One-way platform: Sunny Land plank for the field, procedural elsewhere.
+                    if (theme === "field" && tilesReady) {
+                        ctx.drawImage(tilesImg, 6 * SRC_T, 0, SRC_T, SRC_T, x, y, T, 16);
+                    }
+                    else {
+                        drawFoothold(ctx, x, y, theme);
+                    }
                 }
             }
         }
