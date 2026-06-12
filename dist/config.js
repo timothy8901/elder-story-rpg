@@ -10,7 +10,7 @@
 export const TILE_SIZE = 32;
 /** Bump when regenerating art (atlas/tiles/backgrounds) so browsers fetch the
  *  new PNGs instead of a stale cached copy. Appended as `?v=N` to asset URLs. */
-export const ASSET_VERSION = 3;
+export const ASSET_VERSION = 4;
 /** Internal canvas resolution (must match the <canvas> width/height in index.html). */
 export const VIEW_W = 960;
 export const VIEW_H = 540;
