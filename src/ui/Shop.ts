@@ -1,5 +1,6 @@
 import type { Input } from "../core/Input.js";
 import type { Renderer } from "../core/Renderer.js";
+import { icons, iconForItem } from "../rendering/Icons.js";
 import type { Inventory } from "../items/Inventory.js";
 import { itemDisplayName } from "../items/Item.js";
 import { makeItem } from "../items/loot.js";
@@ -18,7 +19,10 @@ const STOCK = [
   { baseId: "leather_helmet", price: 50 },
   { baseId: "leather_armor", price: 110 },
   { baseId: "iron_shield", price: 90 },
-].map((s) => ({ ...s, name: itemDisplayName(makeItem(s.baseId)) }));
+].map((s) => {
+  const it = makeItem(s.baseId);
+  return { ...s, name: itemDisplayName(it), icon: iconForItem(it) };
+});
 
 const sellPrice = (value: number): number => Math.max(1, Math.round(value * SELL_FRACTION));
 
@@ -115,11 +119,12 @@ export class Shop {
 
     const rows =
       this.tab === "buy"
-        ? STOCK.map((s) => ({ label: s.name, price: s.price, affordable: inventory.gold >= s.price }))
+        ? STOCK.map((s) => ({ label: s.name, price: s.price, affordable: inventory.gold >= s.price, icon: s.icon }))
         : inventory.items.map((it) => ({
             label: itemDisplayName(it) + (it.quantity && it.quantity > 1 ? ` x${it.quantity}` : ""),
             price: sellPrice(it.value ?? 1),
             affordable: true,
+            icon: iconForItem(it),
           }));
 
     const startY = y + 78;
@@ -134,7 +139,8 @@ export class Shop {
       const ry = startY + (i - top) * rowH;
       const sel = i === this.cursor;
       if (sel) r.fillRectScreen(x + 12, ry - 14, w - 24, rowH, "rgba(255,212,94,0.15)");
-      r.text(row.label, x + 24, ry, sel ? "#ffd45e" : "#e8edf4", "13px monospace");
+      const lx = icons.draw(r.ctx, row.icon, x + 22, ry - 14, 16) ? x + 44 : x + 24;
+      r.text(row.label, lx, ry, sel ? "#ffd45e" : "#e8edf4", "13px monospace");
       const priceColor = this.tab === "buy" ? (row.affordable ? "#9affa0" : "#ff8a8a") : "#ffe45e";
       r.text(`${row.price}g`, x + w - 24, ry, priceColor, "13px monospace", "right");
     }

@@ -1,5 +1,6 @@
 import type { Input } from "../core/Input.js";
 import type { Renderer } from "../core/Renderer.js";
+import { icons, iconForItem, iconForSlot } from "../rendering/Icons.js";
 import { Equipment } from "../items/Equipment.js";
 import { EQUIP_SLOTS, type Item, ItemType, itemDisplayName } from "../items/Item.js";
 import type { Inventory } from "../items/Inventory.js";
@@ -361,8 +362,9 @@ export class Menu {
       if (ry > r.height - 90) return; // simple clip
       const selected = i === cursor;
       if (selected) r.fillRectScreen(x - 6, ry - 13, r.width - 80 - 36, 20, "rgba(255,212,94,0.14)");
+      const nx = icons.draw(r.ctx, iconForItem(item), x, ry - 14, 16) ? x + 22 : x;
       const detail = describeItem(item);
-      r.text(itemDisplayName(item) + (item.quantity && item.quantity > 1 ? ` x${item.quantity}` : ""), x, ry, selected ? "#ffd45e" : "#e8edf4", "12px monospace");
+      r.text(itemDisplayName(item) + (item.quantity && item.quantity > 1 ? ` x${item.quantity}` : ""), nx, ry, selected ? "#ffd45e" : "#e8edf4", "12px monospace");
       r.text(detail, x + 320, ry, "#9aa4b2", "12px monospace");
     });
   }
@@ -375,6 +377,13 @@ export class Menu {
       if (selected) r.fillRectScreen(x - 6, ry - 14, r.width - 80 - 36, 22, "rgba(255,212,94,0.14)");
       const item = eq.slots[slot];
       r.text(slot, x, ry, "#9aa4b2", "12px monospace");
+      if (item) {
+        icons.draw(r.ctx, iconForItem(item), x + 104, ry - 15, 18);
+      } else {
+        r.ctx.globalAlpha = 0.35; // dimmed placeholder for the empty slot
+        icons.draw(r.ctx, iconForSlot(slot), x + 104, ry - 15, 18);
+        r.ctx.globalAlpha = 1;
+      }
       r.text(item ? itemDisplayName(item) : "(empty)", x + 130, ry, item ? (selected ? "#ffd45e" : "#e8edf4") : "#5b6473", "12px monospace");
       if (item) r.text(describeItem(item), x + 430, ry, "#9aa4b2", "12px monospace");
     });

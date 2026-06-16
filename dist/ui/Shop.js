@@ -1,3 +1,4 @@
+import { icons, iconForItem } from "../rendering/Icons.js";
 import { itemDisplayName } from "../items/Item.js";
 import { makeItem } from "../items/loot.js";
 /** Fraction of an item's value the player gets when selling. */
@@ -13,7 +14,10 @@ const STOCK = [
     { baseId: "leather_helmet", price: 50 },
     { baseId: "leather_armor", price: 110 },
     { baseId: "iron_shield", price: 90 },
-].map((s) => ({ ...s, name: itemDisplayName(makeItem(s.baseId)) }));
+].map((s) => {
+    const it = makeItem(s.baseId);
+    return { ...s, name: itemDisplayName(it), icon: iconForItem(it) };
+});
 const sellPrice = (value) => Math.max(1, Math.round(value * SELL_FRACTION));
 /**
  * A keyboard-driven buy/sell shop opened by talking to a vendor NPC. Buying
@@ -110,11 +114,12 @@ export class Shop {
         r.text(this.tab === "buy" ? "[ BUY ]" : "  buy", x + 18, y + 50, this.tab === "buy" ? "#ffd45e" : "#8b94a6", "13px monospace");
         r.text(this.tab === "sell" ? "[ SELL ]" : "  sell", x + 110, y + 50, this.tab === "sell" ? "#ffd45e" : "#8b94a6", "13px monospace");
         const rows = this.tab === "buy"
-            ? STOCK.map((s) => ({ label: s.name, price: s.price, affordable: inventory.gold >= s.price }))
+            ? STOCK.map((s) => ({ label: s.name, price: s.price, affordable: inventory.gold >= s.price, icon: s.icon }))
             : inventory.items.map((it) => ({
                 label: itemDisplayName(it) + (it.quantity && it.quantity > 1 ? ` x${it.quantity}` : ""),
                 price: sellPrice(it.value ?? 1),
                 affordable: true,
+                icon: iconForItem(it),
             }));
         const startY = y + 78;
         const rowH = 19;
@@ -129,7 +134,8 @@ export class Shop {
             const sel = i === this.cursor;
             if (sel)
                 r.fillRectScreen(x + 12, ry - 14, w - 24, rowH, "rgba(255,212,94,0.15)");
-            r.text(row.label, x + 24, ry, sel ? "#ffd45e" : "#e8edf4", "13px monospace");
+            const lx = icons.draw(r.ctx, row.icon, x + 22, ry - 14, 16) ? x + 44 : x + 24;
+            r.text(row.label, lx, ry, sel ? "#ffd45e" : "#e8edf4", "13px monospace");
             const priceColor = this.tab === "buy" ? (row.affordable ? "#9affa0" : "#ff8a8a") : "#ffe45e";
             r.text(`${row.price}g`, x + w - 24, ry, priceColor, "13px monospace", "right");
         }

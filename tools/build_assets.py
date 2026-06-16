@@ -186,7 +186,75 @@ def build_atlas():
     print(f"atlas.png {atlas.size} ({len(ATLAS_MAP)} sprites) -> {out}")
 
 
+# ---------------------------------------------------------------------------
+# Item icons (DungeonTileset II weapons/flasks/coin + procedural slot glyphs)
+# ---------------------------------------------------------------------------
+
+# Icon order = cell index in assets/icons.png (mirror ICON_KEYS in src/rendering/Icons.ts).
+ICON_KEYS = [
+    "sword", "dagger", "greatsword", "bow", "axe", "katana", "mace", "staff",
+    "potion_hp", "potion_mp", "potion_sp", "coin",
+    "helm", "chest", "hands", "feet", "shield", "ring", "necklace", "misc",
+]
+# game icon key -> 0x72 source sprite (the rest are drawn as glyphs)
+ICON_SRC = {
+    "sword": "weapon_regular_sword", "dagger": "weapon_knife", "greatsword": "weapon_anime_sword",
+    "bow": "weapon_bow", "axe": "weapon_axe", "katana": "weapon_katana", "mace": "weapon_mace",
+    "staff": "weapon_green_magic_staff",
+    "potion_hp": "flask_red", "potion_mp": "flask_blue", "potion_sp": "flask_green",
+    "coin": "coin_anim_f0",
+}
+IC = 24  # icon cell size
+
+
+def _glyph(kind):
+    from PIL import ImageDraw
+    im = Image.new("RGBA", (IC, IC), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    steel, dark, gold, leather, gem = (176, 184, 198, 255), (40, 44, 58, 255), (224, 184, 92, 255), (150, 96, 54, 255), (120, 200, 255, 255)
+    cx = IC // 2
+    if kind == "helm":
+        d.rectangle([5, 6, IC - 6, 14], fill=steel, outline=dark); d.rectangle([5, 14, IC - 6, 18], fill=steel, outline=dark)
+    elif kind == "chest":
+        d.rectangle([5, 4, IC - 6, IC - 5], fill=steel, outline=dark); d.line([cx, 5, cx, IC - 6], fill=dark)
+    elif kind == "hands":
+        d.rectangle([4, 7, 10, 18], fill=leather, outline=dark); d.rectangle([14, 7, 20, 18], fill=leather, outline=dark)
+    elif kind == "feet":
+        d.rectangle([4, 11, 10, 19], fill=leather, outline=dark); d.rectangle([14, 11, 20, 19], fill=leather, outline=dark)
+    elif kind == "shield":
+        d.polygon([(cx, 4), (IC - 5, 8), (IC - 7, 16), (cx, IC - 4), (6, 16), (4, 8)], fill=steel, outline=dark)
+    elif kind == "ring":
+        d.ellipse([6, 9, 18, IC - 4], outline=gold, width=2); d.rectangle([10, 5, 13, 9], fill=gem)
+    elif kind == "necklace":
+        d.arc([5, 4, IC - 5, IC - 4], 25, 155, fill=gold, width=2); d.polygon([(cx - 2, 14), (cx + 2, 14), (cx, 19)], fill=gem)
+    else:  # misc
+        d.rectangle([5, 5, IC - 6, IC - 6], fill=(126, 112, 92, 255), outline=dark)
+    return im
+
+
+def build_icons():
+    dt = Image.open(os.path.join(DT, "atlas.png")).convert("RGBA")
+    rects = _load_rects(os.path.join(DT, "tile_list.txt"))
+    sheet = Image.new("RGBA", (len(ICON_KEYS) * IC, IC), (0, 0, 0, 0))
+    for i, key in enumerate(ICON_KEYS):
+        if key in ICON_SRC:
+            x, y, w, h = rects[ICON_SRC[key]]
+            sprite = dt.crop((x, y, x + w, y + h))
+            s = min((IC - 4) / w, (IC - 4) / h)               # fit with a 2px margin
+            nw, nh = max(1, round(w * s)), max(1, round(h * s))
+            sprite = sprite.resize((nw, nh), Image.NEAREST)
+            cell_img = Image.new("RGBA", (IC, IC), (0, 0, 0, 0))
+            cell_img.alpha_composite(sprite, ((IC - nw) // 2, (IC - nh) // 2))
+        else:
+            cell_img = _glyph(key)
+        sheet.alpha_composite(cell_img, (i * IC, 0))
+    out = os.path.join(ROOT, "assets", "icons.png")
+    sheet.save(out)
+    print(f"icons.png {sheet.size} ({len(ICON_KEYS)} icons) -> {out}")
+
+
 if __name__ == "__main__":
     build_tiles()
     build_bg()
     build_atlas()
+    build_icons()

@@ -1,4 +1,5 @@
 import type { Renderer } from "../core/Renderer.js";
+import { icons, iconForItem } from "../rendering/Icons.js";
 import type { Equipment } from "../items/Equipment.js";
 import { itemDisplayName } from "../items/Item.js";
 import type { Character, ProgressEvent } from "../progression/Character.js";
@@ -82,14 +83,16 @@ export class HUD {
     // --- Readied gear + level (top-left), framed ---
     const weapon = equipment.mainHand ? itemDisplayName(equipment.mainHand) : "Unarmed";
     r.fillRoundRect(8, 10, 250, 58, 6, "rgba(10,14,22,0.45)");
-    r.text(`⚔ ${weapon}`, 18, 28, "#e8edf4", "12px monospace");
+    const drewWpn = equipment.mainHand ? icons.draw(ctx, iconForItem(equipment.mainHand), 16, 14, 18) : false;
+    r.text(`${drewWpn ? "" : "⚔ "}${weapon}`, drewWpn ? 38 : 18, 28, "#e8edf4", "12px monospace");
     r.text(`✦ ${selectedSpell}`, 18, 46, "#9ad0ff", "12px monospace");
     r.text(`Lvl ${character.characterLevel}`, 18, 62, "#ffd45e", "bold 12px monospace");
 
-    // Gold (top-right), framed.
-    const goldStr = `◆ ${gold}`;
-    const gw = goldStr.length * 8 + 16;
+    // Gold (top-right), framed — coin icon when loaded, else a ◆ glyph.
+    const goldStr = `${icons.ready ? "" : "◆ "}${gold}`;
+    const gw = goldStr.length * 8 + (icons.ready ? 32 : 16);
     r.fillRoundRect(r.width - 14 - gw, 10, gw, 22, 6, "rgba(10,14,22,0.45)");
+    icons.draw(ctx, "coin", r.width - 14 - gw + 6, 12, 18);
     r.text(goldStr, r.width - 18, 25, "#ffd45e", "bold 12px monospace", "right");
 
     // Perk/attribute reminder (below the top-center area banner).

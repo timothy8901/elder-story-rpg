@@ -1,6 +1,7 @@
 import { Game } from "./core/Game.js";
 import { GameLoop } from "./core/GameLoop.js";
 import { atlas } from "./rendering/Atlas.js";
+import { icons } from "./rendering/Icons.js";
 /**
  * Entry point: grab the canvas, build the game, and start the fixed-timestep
  * loop. The loop is also paused while the tab is hidden so it never has to
@@ -10,9 +11,10 @@ const canvas = document.getElementById("game");
 if (!(canvas instanceof HTMLCanvasElement)) {
     throw new Error('Expected a <canvas id="game"> element.');
 }
-// Load the pixel-art sprite atlas; entities render from it once ready, and fall
-// back to procedural drawing until then (and if it fails to load).
+// Load the pixel-art sprite atlas + item-icon sheet; entities/UI render from them
+// once ready, and fall back to procedural drawing / text labels until then.
 atlas.load();
+icons.load();
 const game = new Game(canvas);
 const loop = new GameLoop((dt) => game.update(dt), () => game.render(loop.fps));
 loop.start();
