@@ -482,7 +482,7 @@ export function drawDragon(ctx: CanvasRenderingContext2D, d: Dragon, time: numbe
   const LMINX = -Math.max(w * 0.74, 72); // covers the fixed-size wings on small dragons
   const LMINY = -Math.max(h * 0.8, 54);
   const MAXX = Math.max(w * 0.72, 20);
-  const MAXY = Math.max(h * 0.52, 30);
+  const MAXY = Math.max(h * 0.52, 42); // floor of 42 so the fixed-size wing's full downswing isn't clipped
   const LW = MAXX - LMINX;
   const LH = MAXY - LMINY;
   const bcw = Math.max(1, Math.round(LW / PXD));

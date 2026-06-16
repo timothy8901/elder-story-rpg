@@ -99,8 +99,9 @@ export function iconForSlot(slot: EquipSlot): IconKey {
     case EquipSlot.Feet:
       return "feet";
     case EquipSlot.Shield:
-    case EquipSlot.OffHand:
       return "shield";
+    case EquipSlot.OffHand:
+      return "misc"; // distinct from the Shield slot's placeholder
     case EquipSlot.Ring:
       return "ring";
     case EquipSlot.Necklace:

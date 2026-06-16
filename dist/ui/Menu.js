@@ -325,7 +325,7 @@ export class Menu {
             const nx = icons.draw(r.ctx, iconForItem(item), x, ry - 14, 16) ? x + 22 : x;
             const detail = describeItem(item);
             r.text(itemDisplayName(item) + (item.quantity && item.quantity > 1 ? ` x${item.quantity}` : ""), nx, ry, selected ? "#ffd45e" : "#e8edf4", "12px monospace");
-            r.text(detail, x + 320, ry, "#9aa4b2", "12px monospace");
+            r.text(detail, x + 366, ry, "#9aa4b2", "12px monospace");
         });
     }
     renderEquipment(r, c, eq, x, y, cursor) {
@@ -347,7 +347,7 @@ export class Menu {
             }
             r.text(item ? itemDisplayName(item) : "(empty)", x + 130, ry, item ? (selected ? "#ffd45e" : "#e8edf4") : "#5b6473", "12px monospace");
             if (item)
-                r.text(describeItem(item), x + 430, ry, "#9aa4b2", "12px monospace");
+                r.text(describeItem(item), x + 470, ry, "#9aa4b2", "12px monospace");
         });
     }
     renderCrafting(r, c, x, y, cursor) {

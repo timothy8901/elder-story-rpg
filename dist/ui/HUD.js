@@ -63,7 +63,8 @@ export class HUD {
         bar(1, "MP", character.mp, character.maxMagicka, "#4f8fe0", "#274f8f");
         bar(2, "SP", character.sp, character.maxStamina, "#54c065", "#2c7a3a");
         // --- Readied gear + level (top-left), framed ---
-        const weapon = equipment.mainHand ? itemDisplayName(equipment.mainHand) : "Unarmed";
+        const fullWeapon = equipment.mainHand ? itemDisplayName(equipment.mainHand) : "Unarmed";
+        const weapon = fullWeapon.length > 28 ? `${fullWeapon.slice(0, 27)}…` : fullWeapon; // keep within the 250px frame
         r.fillRoundRect(8, 10, 250, 58, 6, "rgba(10,14,22,0.45)");
         const drewWpn = equipment.mainHand ? icons.draw(ctx, iconForItem(equipment.mainHand), 16, 14, 18) : false;
         r.text(`${drewWpn ? "" : "⚔ "}${weapon}`, drewWpn ? 38 : 18, 28, "#e8edf4", "12px monospace");
