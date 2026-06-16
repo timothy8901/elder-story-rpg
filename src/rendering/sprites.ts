@@ -434,11 +434,15 @@ export function drawEnemy(ctx: CanvasRenderingContext2D, e: Enemy, time: number)
 // Dragons
 // ---------------------------------------------------------------------------
 
-function dragonPalette(kind: string): { body: string; belly: string; wing: string; horn: string; eye: string } {
-  if (kind === "Alduin") return { body: "#2b2533", belly: "#463f54", wing: "#1c1726", horn: "#0c0a12", eye: "#ff3b30" };
-  if (kind === "Sahloknir") return { body: "#7d6a3a", belly: "#b79a55", wing: "#5e4f2c", horn: "#352b1c", eye: "#ffd24a" };
-  return { body: "#3f7d4a", belly: "#80c06a", wing: "#2f5e38", horn: "#23401f", eye: "#ffd24a" };
+function dragonPalette(kind: string): { body: string; belly: string; wing: string; horn: string; eye: string; hi: string } {
+  if (kind === "Alduin") return { body: "#2b2533", belly: "#463f54", wing: "#1c1726", horn: "#0c0a12", eye: "#ff3b30", hi: "#5b5168" };
+  if (kind === "Sahloknir") return { body: "#7d6a3a", belly: "#b79a55", wing: "#5e4f2c", horn: "#352b1c", eye: "#ffd24a", hi: "#c9ad6a" };
+  return { body: "#3f7d4a", belly: "#80c06a", wing: "#2f5e38", horn: "#23401f", eye: "#ffd24a", hi: "#9ad97e" };
 }
+
+/** Dark outline + a reusable low-res buffer so the dragon renders as crisp flat pixel art. */
+const DRAGON_OUTLINE = "#15101c";
+let dragonBuf: HTMLCanvasElement | null = null;
 
 export function drawDragon(ctx: CanvasRenderingContext2D, d: Dragon, time: number): void {
   const b = d.body;
@@ -452,135 +456,167 @@ export function drawDragon(ctx: CanvasRenderingContext2D, d: Dragon, time: numbe
   // Fire breath (drawn in world space, pours straight down).
   const z = d.attackZone();
   if (z) {
-    const fg = ctx.createLinearGradient(0, z.y, 0, z.y + z.h);
-    fg.addColorStop(0, "rgba(255,225,130,0.95)");
-    fg.addColorStop(0.4, "rgba(255,140,50,0.8)");
-    fg.addColorStop(1, "rgba(190,40,20,0)");
-    ctx.fillStyle = fg;
-    ctx.beginPath();
-    ctx.moveTo(z.x, z.y);
-    ctx.lineTo(z.x + z.w, z.y);
-    ctx.lineTo(z.x + z.w * 1.9, z.y + z.h);
-    ctx.lineTo(z.x - z.w * 0.9, z.y + z.h);
-    ctx.closePath();
-    ctx.fill();
+    // Flat banded flame (no smooth gradient) to match the pixel art.
+    ctx.imageSmoothingEnabled = false;
+    const bands: Array<[string, number, number]> = [
+      ["rgba(206,58,26,0.8)", 0.62, 1.95], // outer red, drawn first (widest)
+      ["rgba(255,150,55,0.92)", 0.32, 1.45], // mid orange
+      ["rgba(255,236,150,0.96)", 0, 1.0], // bright core
+    ];
+    for (const [col, t, spread] of bands) {
+      const yy = z.y + z.h * t;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(z.x - z.w * (spread - 1) * 0.5, yy);
+      ctx.lineTo(z.x + z.w * (1 + (spread - 1) * 0.5), yy);
+      ctx.lineTo(z.x + z.w * spread, z.y + z.h);
+      ctx.lineTo(z.x - z.w * (spread - 1), z.y + z.h);
+      ctx.closePath();
+      ctx.fill();
+    }
   }
 
+  // --- Body: draw into a low-res buffer, then upscale nearest-neighbor so the
+  // curves become crisp pixels (3 screen px per art pixel, matching the cast). ---
+  const PXD = 3;
+  const LMINX = -Math.max(w * 0.74, 72); // covers the fixed-size wings on small dragons
+  const LMINY = -Math.max(h * 0.8, 54);
+  const MAXX = Math.max(w * 0.72, 20);
+  const MAXY = Math.max(h * 0.52, 30);
+  const LW = MAXX - LMINX;
+  const LH = MAXY - LMINY;
+  const bcw = Math.max(1, Math.round(LW / PXD));
+  const bch = Math.max(1, Math.round(LH / PXD));
+  if (!dragonBuf) dragonBuf = document.createElement("canvas");
+  dragonBuf.width = bcw;
+  dragonBuf.height = bch;
+  const g = dragonBuf.getContext("2d");
+  if (g) {
+    g.imageSmoothingEnabled = false;
+    g.save();
+    g.scale(1 / PXD, 1 / PXD);
+    g.translate(-LMINX, -LMINY); // draw in the same local coords as before
+    g.lineJoin = "round";
+    g.lineWidth = PXD; // ~1 buffer pixel
+    g.strokeStyle = DRAGON_OUTLINE;
+
+    // Wings (flap above the body).
+    g.fillStyle = pal.wing;
+    const wingA = -0.5 + flap * 0.4;
+    for (const off of [4, -10]) {
+      g.save();
+      g.translate(-6, -8);
+      g.rotate(wingA);
+      g.beginPath();
+      g.moveTo(0, 0);
+      g.quadraticCurveTo(-34, -30, -58, -10 + off);
+      g.lineTo(-40, 2 + off * 0.4);
+      g.lineTo(-46, 12 + off * 0.3);
+      g.lineTo(-26, 6);
+      g.quadraticCurveTo(-14, 6, 0, 8);
+      g.closePath();
+      g.fill();
+      g.stroke();
+      g.restore();
+    }
+
+    // Tail.
+    g.fillStyle = pal.body;
+    g.beginPath();
+    g.moveTo(-w * 0.3, -2);
+    g.quadraticCurveTo(-w * 0.6, -10, -w * 0.52, 2);
+    g.quadraticCurveTo(-w * 0.62, 2, -w * 0.52, 8);
+    g.quadraticCurveTo(-w * 0.6, 12, -w * 0.3, 8);
+    g.closePath();
+    g.fill();
+    g.stroke();
+
+    // Body + lighter belly + back highlight (flat tone bands).
+    g.beginPath();
+    g.ellipse(0, 0, w * 0.34, h * 0.42, 0, 0, Math.PI * 2);
+    g.fillStyle = pal.body;
+    g.fill();
+    g.stroke();
+    g.fillStyle = pal.belly;
+    g.beginPath();
+    g.ellipse(0, h * 0.16, w * 0.26, h * 0.22, 0, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = pal.hi;
+    g.beginPath();
+    g.ellipse(-w * 0.04, -h * 0.16, w * 0.2, h * 0.1, 0, 0, Math.PI * 2);
+    g.fill();
+
+    // Legs.
+    g.fillStyle = pal.body;
+    for (const lx of [-w * 0.08, w * 0.16]) {
+      g.beginPath();
+      rr(g, lx, h * 0.2, 7, 12, 3);
+      g.fill();
+      g.stroke();
+    }
+
+    // Neck + head (front).
+    g.fillStyle = pal.body;
+    g.beginPath();
+    g.moveTo(w * 0.2, -h * 0.1);
+    g.quadraticCurveTo(w * 0.4, -h * 0.5, w * 0.5, -h * 0.32);
+    g.lineTo(w * 0.5, -h * 0.05);
+    g.quadraticCurveTo(w * 0.36, 0, w * 0.2, h * 0.1);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.beginPath();
+    g.ellipse(w * 0.5, -h * 0.34, 11, 8, 0, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    // Snout.
+    g.beginPath();
+    g.moveTo(w * 0.56, -h * 0.4);
+    g.lineTo(w * 0.66, -h * 0.34);
+    g.lineTo(w * 0.56, -h * 0.26);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    // Horns.
+    g.fillStyle = pal.horn;
+    g.beginPath();
+    g.moveTo(w * 0.46, -h * 0.42);
+    g.lineTo(w * 0.4, -h * 0.62);
+    g.lineTo(w * 0.5, -h * 0.46);
+    g.closePath();
+    g.fill();
+    // Eye (a hard pixel block).
+    g.fillStyle = pal.eye;
+    g.fillRect(w * 0.5, -h * 0.39, 3, 3);
+    g.restore();
+  }
+
+  // Blit the buffer to the world, mirrored by facing, upscaled crisp.
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.scale(b.facing, 1); // art is authored facing +x
-  ctx.lineJoin = "round";
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = "#15101c";
+  ctx.scale(b.facing, 1);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(dragonBuf, 0, 0, bcw, bch, LMINX, LMINY, bcw * PXD, bch * PXD);
 
-  // Wings (flap above the body).
-  ctx.fillStyle = pal.wing;
-  const wingA = -0.5 + flap * 0.4;
-  for (const off of [4, -10]) {
-    ctx.save();
-    ctx.translate(-6, -8);
-    ctx.rotate(wingA);
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(-34, -30, -58, -10 + off);
-    ctx.lineTo(-40, 2 + off * 0.4);
-    ctx.lineTo(-46, 12 + off * 0.3);
-    ctx.lineTo(-26, 6);
-    ctx.quadraticCurveTo(-14, 6, 0, 8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // Tail.
-  ctx.fillStyle = pal.body;
-  ctx.beginPath();
-  ctx.moveTo(-w * 0.3, -2);
-  ctx.quadraticCurveTo(-w * 0.6, -10, -w * 0.52, 2);
-  ctx.quadraticCurveTo(-w * 0.62, 2, -w * 0.52, 8);
-  ctx.quadraticCurveTo(-w * 0.6, 12, -w * 0.3, 8);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-
-  // Body.
-  ctx.beginPath();
-  ctx.ellipse(0, 0, w * 0.34, h * 0.42, 0, 0, Math.PI * 2);
-  ctx.fillStyle = pal.body;
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = pal.belly;
-  ctx.beginPath();
-  ctx.ellipse(0, h * 0.16, w * 0.26, h * 0.22, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Legs.
-  ctx.fillStyle = pal.body;
-  for (const lx of [-w * 0.08, w * 0.16]) {
-    ctx.beginPath();
-    rr(ctx, lx, h * 0.2, 7, 12, 3);
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  // Neck + head (front).
-  ctx.fillStyle = pal.body;
-  ctx.beginPath();
-  ctx.moveTo(w * 0.2, -h * 0.1);
-  ctx.quadraticCurveTo(w * 0.4, -h * 0.5, w * 0.5, -h * 0.32);
-  ctx.lineTo(w * 0.5, -h * 0.05);
-  ctx.quadraticCurveTo(w * 0.36, 0, w * 0.2, h * 0.1);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  // Head.
-  ctx.beginPath();
-  ctx.ellipse(w * 0.5, -h * 0.34, 11, 8, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  // Snout.
-  ctx.beginPath();
-  ctx.moveTo(w * 0.56, -h * 0.4);
-  ctx.lineTo(w * 0.66, -h * 0.34);
-  ctx.lineTo(w * 0.56, -h * 0.26);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  // Horns.
-  ctx.fillStyle = pal.horn;
-  ctx.beginPath();
-  ctx.moveTo(w * 0.46, -h * 0.42);
-  ctx.lineTo(w * 0.4, -h * 0.62);
-  ctx.lineTo(w * 0.5, -h * 0.46);
-  ctx.closePath();
-  ctx.fill();
-  // Eye.
-  ctx.fillStyle = pal.eye;
-  ctx.beginPath();
-  ctx.arc(w * 0.52, -h * 0.36, 2.2, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Dragonrend shackles (held to the earth).
+  // Dragonrend shackles — pixel sparks orbiting the dragon.
   if (d.dragonrendTimer > 0) {
-    ctx.globalAlpha = 0.5;
-    ctx.strokeStyle = "#b06bff";
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 5; i++) {
-      const a = time * 6 + i;
-      ctx.beginPath();
-      ctx.arc(Math.cos(a) * w * 0.3, Math.sin(a) * h * 0.3, 3, 0, Math.PI * 2);
-      ctx.stroke();
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = "#b06bff";
+    for (let i = 0; i < 6; i++) {
+      const a = time * 5 + i * 1.05;
+      const px = Math.round((Math.cos(a) * w * 0.34) / PXD) * PXD;
+      const py = Math.round((Math.sin(a) * h * 0.32) / PXD) * PXD;
+      ctx.fillRect(px - PXD, py - PXD, PXD * 2, PXD * 2);
     }
     ctx.globalAlpha = 1;
   }
 
-  // Hurt flash.
+  // Hurt flash (body-shaped white pop).
   if (d.hurtTimer > 0) {
-    ctx.globalAlpha = 0.45;
+    ctx.globalAlpha = 0.4;
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.ellipse(0, 0, w * 0.4, h * 0.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -h * 0.02, w * 0.38, h * 0.46, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
   }
