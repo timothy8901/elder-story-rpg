@@ -91,7 +91,7 @@ COLS, ROWS = 12, 20
 # (game_key, 0x72_base, tint_rgb_or_None) — tints add faction flavor when a base
 # is reused (multiply over the sprite, transparent pixels untouched).
 ATLAS_MAP = [
-    ("hero", "knight_m", None),
+    ("hero", "knight_m", None),                             # the only untinted teal knight — stands out from faction knights
     ("werewolf", "ogre", None),
     ("wolf", "chort", None),
     ("bandit", "masked_orc", None),
@@ -99,13 +99,13 @@ ATLAS_MAP = [
     ("draugr_overlord", "big_zombie", None),
     ("dwarven_battlemage", "wizzard_m", (150, 210, 255)),   # arcane cyan
     ("dwarven_warlord", "orc_shaman", None),
-    ("npc_legion", "knight_m", (255, 205, 140)),            # imperial gold
+    ("npc_legion", "knight_m", (255, 180, 150)),            # imperial warm steel (teal tabard greens under gold)
     ("npc_stormcloaks", "knight_f", (150, 180, 255)),       # nord blue
     ("npc_companions", "dwarf_m", None),
     ("npc_college", "wizzard_f", (190, 160, 255)),          # violet
     ("npc_thievesGuild", "elf_m", (120, 150, 120)),         # shadow green
     ("npc_darkBrotherhood", "wogol", None),                 # hooded cultist
-    ("npc_blades", "knight_m", (255, 140, 140)),            # crimson order
+    ("npc_blades", "knight_m", (200, 95, 95)),              # deep crimson order (distinct from Legion)
     ("npc_bards", "elf_f", (255, 170, 220)),                # magenta
     ("npc_courier", "doc", None),
     ("npc_arngeir", "wizzard_m", (205, 205, 215)),          # grey greybeard
