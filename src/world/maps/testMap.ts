@@ -109,5 +109,15 @@ export function createTestMap(): GameMap {
       // East to the Sunlit Meadow.
       groundPortal(46, 14, "meadow", "fromOverworld", "Sunlit Meadow"),
     ],
+    // Cosmetic scenery (Sunny Land), standing on the row-14 ground; clear of NPCs + the pit.
+    decorations: [
+      { key: "tree", x: 5 * TILE_SIZE, y: 14 * TILE_SIZE },
+      { key: "bush", x: 10 * TILE_SIZE, y: 14 * TILE_SIZE },
+      { key: "rock", x: 15 * TILE_SIZE, y: 14 * TILE_SIZE },
+      { key: "sign", x: 20 * TILE_SIZE, y: 14 * TILE_SIZE },
+      { key: "tree", x: 33 * TILE_SIZE, y: 14 * TILE_SIZE },
+      { key: "shrooms", x: 38 * TILE_SIZE, y: 14 * TILE_SIZE },
+      { key: "bush", x: 45 * TILE_SIZE, y: 14 * TILE_SIZE },
+    ],
   };
 }

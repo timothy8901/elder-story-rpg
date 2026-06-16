@@ -18,6 +18,13 @@ export interface NpcSpawn {
 /** Visual theme that drives background and tile rendering. */
 export type MapTheme = "field" | "cave" | "dwarven";
 
+/** A cosmetic prop placed in the world (bottom-center anchored at x,y). See Props.ts. */
+export interface Decoration {
+  key: string;
+  x: number;
+  y: number;
+}
+
 /** Where an enemy starts on a map. */
 export interface EnemySpawn {
   x: number;
@@ -59,4 +66,6 @@ export interface GameMap {
   readonly enemySpawns: EnemySpawn[];
   readonly npcSpawns: NpcSpawn[];
   readonly exits: MapExit[];
+  /** Optional cosmetic scenery drawn behind entities. */
+  readonly decorations?: Decoration[];
 }

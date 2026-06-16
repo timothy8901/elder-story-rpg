@@ -26,6 +26,7 @@ import { DwarvenQuest } from "../story/DwarvenQuest.js";
 import { createMap, FIRST_MAP_ID } from "../world/maps/index.js";
 import { drawBackground } from "../rendering/Background.js";
 import { drawTilemap } from "../rendering/Tiles.js";
+import { drawDecorations } from "../rendering/Props.js";
 import { Particles } from "../combat/Particles.js";
 import { drawNpc, drawPortal, drawQuestArrow } from "../rendering/sprites.js";
 import { Camera } from "./Camera.js";
@@ -861,6 +862,7 @@ export class Game {
         const time = this.animTime;
         drawBackground(r, cam, this.map, time);
         drawTilemap(r, cam, this.map.tilemap, this.map.theme);
+        drawDecorations(r, cam, this.map);
         r.withWorld(cam, (ctx) => {
             for (const exit of this.map.exits)
                 drawPortal(ctx, exit, time);

@@ -76,5 +76,13 @@ export function createCaveMap(): GameMap {
         kind: "portal",
       },
     ],
+    // Stone columns, crates, bones + cave mushrooms on the row-15 floor.
+    decorations: [
+      { key: "column", x: 8 * TILE_SIZE, y: 15 * TILE_SIZE },
+      { key: "skull", x: 11 * TILE_SIZE, y: 15 * TILE_SIZE },
+      { key: "crate", x: 18 * TILE_SIZE, y: 15 * TILE_SIZE },
+      { key: "shrooms", x: 21 * TILE_SIZE, y: 15 * TILE_SIZE },
+      { key: "column", x: 26 * TILE_SIZE, y: 15 * TILE_SIZE },
+    ],
   };
 }

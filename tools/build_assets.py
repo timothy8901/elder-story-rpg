@@ -253,8 +253,37 @@ def build_icons():
     print(f"icons.png {sheet.size} ({len(ICON_KEYS)} icons) -> {out}")
 
 
+# ---------------------------------------------------------------------------
+# Decoration props (Sunny Land scenery + DungeonTileset II dungeon props)
+# ---------------------------------------------------------------------------
+
+def build_props():
+    pd = os.path.join(ROOT, "assets", "props")
+    os.makedirs(pd, exist_ok=True)
+    # Sunny Land scenery at native pixel size.
+    slp = os.path.join(SL, "environment/props")
+    for src, key in [("tree.png", "tree"), ("bush.png", "bush"), ("rock.png", "rock"),
+                     ("sign.png", "sign"), ("shrooms.png", "shrooms")]:
+        Image.open(os.path.join(slp, src)).convert("RGBA").save(os.path.join(pd, f"{key}.png"))
+    # 0x72 dungeon props, scaled x2 to match the 16->32 tile scale.
+    dt = Image.open(os.path.join(DT, "atlas.png")).convert("RGBA")
+    rects = _load_rects(os.path.join(DT, "tile_list.txt"))
+
+    def dprop(name, tint=None):
+        x, y, w, h = rects[name]
+        im = dt.crop((x, y, x + w, y + h)).resize((w * 2, h * 2), Image.NEAREST)
+        return _tint(im, tint) if tint else im
+
+    dprop("column").save(os.path.join(pd, "column.png"))
+    dprop("column", (212, 158, 90)).save(os.path.join(pd, "column_bronze.png"))  # Dwemer brass
+    dprop("crate").save(os.path.join(pd, "crate.png"))
+    dprop("skull").save(os.path.join(pd, "skull.png"))
+    print("props -> assets/props/ (tree,bush,rock,sign,shrooms,column,column_bronze,crate,skull)")
+
+
 if __name__ == "__main__":
     build_tiles()
     build_bg()
     build_atlas()
     build_icons()
+    build_props()

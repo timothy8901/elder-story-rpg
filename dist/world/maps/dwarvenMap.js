@@ -37,6 +37,14 @@ export function createDwarvenMap() {
         ],
         npcSpawns: [],
         exits: [groundPortal(2, 14, "cave", "fromDwarven", "Hollowdeep Cave")],
+        // Bronze Dwemer columns + crate/bones on the row-14 floor; clear of foes + raised blocks.
+        decorations: [
+            { key: "column_bronze", x: 6 * TILE_SIZE, y: 14 * TILE_SIZE },
+            { key: "crate", x: 16 * TILE_SIZE, y: 14 * TILE_SIZE },
+            { key: "column_bronze", x: 29 * TILE_SIZE, y: 14 * TILE_SIZE },
+            { key: "skull", x: 37 * TILE_SIZE, y: 14 * TILE_SIZE },
+            { key: "column_bronze", x: 43 * TILE_SIZE, y: 14 * TILE_SIZE },
+        ],
     };
 }
 //# sourceMappingURL=dwarvenMap.js.map
