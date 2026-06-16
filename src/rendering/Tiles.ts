@@ -6,9 +6,11 @@ import { TileType } from "../types.js";
 import type { MapTheme } from "../world/GameMap.js";
 
 /**
- * Sunny Land (CC0, by @ansimuz) field tileset, assembled by tools/build_assets.py.
- * Columns: inner, top, topL, topR, left, right, oneway (16px each); row 0 = field.
- * If the PNG is missing the renderer falls back to the procedural draws below.
+ * CC0 tileset assembled by tools/build_assets.py — field from Sunny Land (@ansimuz),
+ * cave + Dwemer (bronze-tinted) from DungeonTileset II (@0x72).
+ * Columns: inner, top, topL, topR, left, right, oneway (16px each).
+ * Rows: field=0, cave=1, dwarven=2. If the PNG is missing the renderer falls back
+ * to the procedural draws below.
  */
 const SRC_T = 16;
 const tilesImg = new Image();
@@ -18,8 +20,11 @@ tilesImg.onload = () => {
 };
 tilesImg.src = `assets/tiles.png?v=${ASSET_VERSION}`;
 
-/** Source column for a field solid tile: grass-capped when its top is exposed, else plain dirt. */
-function fieldSolidCol(map: Tilemap, col: number, row: number): number {
+/** Row in tiles.png for each map theme. */
+const THEME_ROW: Record<MapTheme, number> = { field: 0, cave: 1, dwarven: 2 };
+
+/** Source column for a solid tile: capped (col 1) when its top is exposed, else body (col 0). */
+function solidCol(map: Tilemap, col: number, row: number): number {
   return map.tileAt(col, row - 1) !== TileType.Solid ? 1 : 0;
 }
 
@@ -48,15 +53,16 @@ export function drawTilemap(r: Renderer, cam: Camera, map: Tilemap, theme: MapTh
         const x = col * T;
         const y = row * T;
         if (tile === TileType.Solid) {
-          if (theme === "field" && tilesReady) {
-            ctx.drawImage(tilesImg, fieldSolidCol(map, col, row) * SRC_T, 0, SRC_T, SRC_T, x, y, T, T);
+          if (tilesReady) {
+            const sy = THEME_ROW[theme] * SRC_T;
+            ctx.drawImage(tilesImg, solidCol(map, col, row) * SRC_T, sy, SRC_T, SRC_T, x, y, T, T);
           } else if (theme === "cave") drawStone(ctx, map, col, row, x, y);
           else if (theme === "dwarven") drawMetal(ctx, map, col, row, x, y);
           else drawEarth(ctx, map, col, row, x, y);
         } else {
-          // One-way platform: Sunny Land plank for the field, procedural elsewhere.
-          if (theme === "field" && tilesReady) {
-            ctx.drawImage(tilesImg, 6 * SRC_T, 0, SRC_T, SRC_T, x, y, T, 16);
+          // One-way platform: pack ledge per theme, else the procedural foothold.
+          if (tilesReady) {
+            ctx.drawImage(tilesImg, 6 * SRC_T, THEME_ROW[theme] * SRC_T, SRC_T, SRC_T, x, y, T, 16);
           } else {
             drawFoothold(ctx, x, y, theme);
           }

@@ -35,6 +35,7 @@ def cell(img, c, r):
 
 
 def build_tiles():
+    # --- field: Sunny Land grass/dirt (row 0) ---
     ts = Image.open(os.path.join(SL, "environment/layers/tileset.png")).convert("RGBA")
     plat = Image.open(os.path.join(SL, "environment/props/small-platform.png")).convert("RGBA").resize((T, T), Image.NEAREST)
     grass = cell(ts, 1, 1)  # grass-capped dirt
@@ -43,12 +44,31 @@ def build_tiles():
         "inner": dirt, "top": grass, "topL": grass, "topR": grass,
         "left": dirt, "right": dirt, "oneway": plat,
     }
+
+    # --- cave: 0x72 grey stone brick (row 1); Dwemer = bronze-tinted (row 2) ---
+    dt = Image.open(os.path.join(DT, "atlas.png")).convert("RGBA")
+    rects = _load_rects(os.path.join(DT, "tile_list.txt"))
+
+    def dcell(name):
+        r = rects[name]
+        return dt.crop((r[0], r[1], r[0] + r[2], r[1] + r[3]))
+
+    wall, wleft, wright, wtop = dcell("wall_mid"), dcell("wall_left"), dcell("wall_right"), dcell("wall_top_mid")
+    capped = wall.copy()                               # brick body with a light stone lip on top
+    capped.alpha_composite(wtop.crop((0, 0, T, 6)), (0, 0))
+    cave = {
+        "inner": wall, "top": capped, "topL": capped, "topR": capped,
+        "left": wleft, "right": wright, "oneway": wtop,
+    }
+    dwarven = {v: _tint(im, (212, 158, 90)) for v, im in cave.items()}  # warm Dwemer bronze
+
     sheet = Image.new("RGBA", (len(VARIANTS) * T, len(THEMES) * T), (0, 0, 0, 0))
-    for ci, v in enumerate(VARIANTS):
-        sheet.alpha_composite(field[v], (ci * T, 0))  # field = row 0
+    for row, variants in enumerate([field, cave, dwarven]):  # field=0, cave=1, dwarven=2
+        for ci, v in enumerate(VARIANTS):
+            sheet.alpha_composite(variants[v], (ci * T, row * T))
     out = os.path.join(ROOT, "assets", "tiles.png")
     sheet.save(out)
-    print(f"tiles.png {sheet.size} -> {out}")
+    print(f"tiles.png {sheet.size} (field+cave+dwarven) -> {out}")
 
 
 def build_bg():

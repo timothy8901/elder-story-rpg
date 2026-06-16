@@ -1,9 +1,11 @@
 import { TILE_SIZE as T, ASSET_VERSION } from "../config.js";
 import { TileType } from "../types.js";
 /**
- * Sunny Land (CC0, by @ansimuz) field tileset, assembled by tools/build_assets.py.
- * Columns: inner, top, topL, topR, left, right, oneway (16px each); row 0 = field.
- * If the PNG is missing the renderer falls back to the procedural draws below.
+ * CC0 tileset assembled by tools/build_assets.py — field from Sunny Land (@ansimuz),
+ * cave + Dwemer (bronze-tinted) from DungeonTileset II (@0x72).
+ * Columns: inner, top, topL, topR, left, right, oneway (16px each).
+ * Rows: field=0, cave=1, dwarven=2. If the PNG is missing the renderer falls back
+ * to the procedural draws below.
  */
 const SRC_T = 16;
 const tilesImg = new Image();
@@ -12,8 +14,10 @@ tilesImg.onload = () => {
     tilesReady = true;
 };
 tilesImg.src = `assets/tiles.png?v=${ASSET_VERSION}`;
-/** Source column for a field solid tile: grass-capped when its top is exposed, else plain dirt. */
-function fieldSolidCol(map, col, row) {
+/** Row in tiles.png for each map theme. */
+const THEME_ROW = { field: 0, cave: 1, dwarven: 2 };
+/** Source column for a solid tile: capped (col 1) when its top is exposed, else body (col 0). */
+function solidCol(map, col, row) {
     return map.tileAt(col, row - 1) !== TileType.Solid ? 1 : 0;
 }
 /** Stable pseudo-random in [0,1) from tile coords — keeps speckles from flickering. */
@@ -40,8 +44,9 @@ export function drawTilemap(r, cam, map, theme) {
                 const x = col * T;
                 const y = row * T;
                 if (tile === TileType.Solid) {
-                    if (theme === "field" && tilesReady) {
-                        ctx.drawImage(tilesImg, fieldSolidCol(map, col, row) * SRC_T, 0, SRC_T, SRC_T, x, y, T, T);
+                    if (tilesReady) {
+                        const sy = THEME_ROW[theme] * SRC_T;
+                        ctx.drawImage(tilesImg, solidCol(map, col, row) * SRC_T, sy, SRC_T, SRC_T, x, y, T, T);
                     }
                     else if (theme === "cave")
                         drawStone(ctx, map, col, row, x, y);
@@ -51,9 +56,9 @@ export function drawTilemap(r, cam, map, theme) {
                         drawEarth(ctx, map, col, row, x, y);
                 }
                 else {
-                    // One-way platform: Sunny Land plank for the field, procedural elsewhere.
-                    if (theme === "field" && tilesReady) {
-                        ctx.drawImage(tilesImg, 6 * SRC_T, 0, SRC_T, SRC_T, x, y, T, 16);
+                    // One-way platform: pack ledge per theme, else the procedural foothold.
+                    if (tilesReady) {
+                        ctx.drawImage(tilesImg, 6 * SRC_T, THEME_ROW[theme] * SRC_T, SRC_T, SRC_T, x, y, T, 16);
                     }
                     else {
                         drawFoothold(ctx, x, y, theme);
