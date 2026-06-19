@@ -1,4 +1,4 @@
-# Elder-Story-RPG
+# FableQuest RPG
 
 A single-player 2D side-scrolling RPG: **MapleStory**-style platforming physics married to **Skyrim**-style progression (use-to-level skills, perks, modular loot, LocalStorage saves). Web-native — HTML5 `<canvas>` + vanilla **TypeScript**, no game engine, no backend. Built to deploy as a static site on GitHub Pages.
 

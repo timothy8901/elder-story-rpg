@@ -20,6 +20,9 @@ export interface SaveState {
   dwarvenQuest: DwarvenQuestSave;
 }
 
+// Internal LocalStorage key — kept as the original "elder-story-rpg/..." slug even
+// though the game is now "FableQuest RPG", so existing players' saves still load.
+// (It's never shown to the player; renaming it would silently orphan every save.)
 const KEY = "elder-story-rpg/save/v1";
 const VERSION = 3;
 

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Elder-Story-RPG</title>
+    <title>FableQuest RPG</title>
     <style>
       html,
       body {
@@ -30,6 +30,14 @@
         box-shadow: 0 0 0 2px #1c2230, 0 14px 48px rgba(0, 0, 0, 0.6);
         max-width: 100vw;
         max-height: 80vh;
+      }
+      /* FableQuest RPG title wordmark, above the game screen. */
+      #logo {
+        width: min(92vw, 560px);
+        height: auto;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+        margin: 2px 0 -2px;
       }
       /* Keyboard controls legend, shown below the game screen. */
       #controls {
@@ -93,6 +101,9 @@
     </style>
   </head>
   <body>
+    <!-- Game title wordmark (FableQuest RPG). -->
+    <img id="logo" src="./assets/logo.png" alt="FableQuest RPG" />
+
     <!-- Internal resolution is fixed; CSS only scales the element to fit the window. -->
     <canvas id="game" width="960" height="540"></canvas>
 
