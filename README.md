@@ -45,7 +45,7 @@ In the menu: `←/→` switch tabs (Stats & Skills / Inventory / Equipment / Cra
 The project compiles TypeScript to **native ES modules** with `tsc` — no bundler. ES modules must be served over HTTP (not opened from `file://`), so use the bundled static server.
 
 ```bash
-cd Elder-Story-RPG
+cd fablequest-rpg
 npm install          # one-time: installs the TypeScript compiler
 npm run build        # compiles src/ -> dist/
 npm run serve        # serves the folder at http://localhost:8080
